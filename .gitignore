@@ -1,4 +1,2 @@
 # .gitignore
 .env
-.env.local
-.env.development.local
