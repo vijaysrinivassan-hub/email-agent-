@@ -1,9 +1,66 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Analytics } from "@vercel/analytics/react";
 
 // ============================================================
 const CORRECT_PASSWORD = "vijay@outreach2024";
 const CLAUDE_API_KEY = process.env.REACT_APP_CLAUDE_API_KEY;
+
+// Apollo-exact industry list (from Apollo Knowledge Base)
+const APOLLO_INDUSTRIES = [
+  "Accounting","Agriculture","Airlines/Aviation","Alternative Dispute Resolution","Alternative Medicine","Animation",
+  "Apparel & Fashion","Architecture & Planning","Arts & Crafts","Automotive","Aviation & Aerospace","Banking",
+  "Biotechnology","Broadcast Media","Building Materials","Business Supplies & Equipment","Capital Markets","Chemicals",
+  "Civic & Social Organization","Civil Engineering","Commercial Real Estate","Computer & Network Security","Computer Games",
+  "Computer Hardware","Computer Networking","Computer Software","Construction","Consumer Electronics","Consumer Goods",
+  "Consumer Services","Cosmetics","Dairy","Defense & Space","Design","E-Learning","Education Management",
+  "Electrical/Electronic Manufacturing","Entertainment","Environmental Services","Events Services","Executive Office",
+  "Facilities Services","Farming","Financial Services","Fine Art","Fishery","Food & Beverages","Food Production",
+  "Fund-Raising","Furniture","Gambling & Casinos","Glass, Ceramics & Concrete","Government Administration",
+  "Government Relations","Graphic Design","Health, Wellness & Fitness","Higher Education","Hospital & Health Care",
+  "Hospitality","Human Resources","Import & Export","Individual & Family Services","Industrial Automation",
+  "Information Services","Information Technology & Services","Insurance","International Affairs",
+  "International Trade & Development","Internet","Investment Banking","Investment Management","Judiciary",
+  "Law Enforcement","Law Practice","Legal Services","Legislative Office","Leisure, Travel & Tourism","Libraries",
+  "Logistics & Supply Chain","Luxury Goods & Jewelry","Machinery","Management Consulting","Maritime","Market Research",
+  "Marketing & Advertising","Mechanical or Industrial Engineering","Media Production","Medical Devices","Medical Practice",
+  "Mental Health Care","Military","Mining & Metals","Motion Pictures & Film","Museums & Institutions","Music",
+  "Nanotechnology","Newspapers","Nonprofit Organization Management","Oil & Energy","Online Media","Outsourcing/Offshoring",
+  "Package/Freight Delivery","Packaging & Containers","Paper & Forest Products","Performing Arts","Pharmaceuticals",
+  "Philanthropy","Photography","Plastics","Political Organization","Primary/Secondary Education","Printing",
+  "Professional Training & Coaching","Program Development","Public Policy","Public Relations & Communications",
+  "Public Safety","Publishing","Railroad Manufacture","Ranching","Real Estate","Recreational Facilities & Services",
+  "Religious Institutions","Renewables & Environment","Research","Restaurants","Retail","Security & Investigations",
+  "Semiconductors","Shipbuilding","Sports","Staffing & Recruiting","Supermarkets","Telecommunications","Textiles",
+  "Think Tanks","Tobacco","Translation & Localization","Transportation/Trucking/Railroad","Utilities",
+  "Venture Capital & Private Equity","Veterinary","Warehousing","Wholesale","Wine & Spirits","Wireless","Writing & Editing",
+];
+
+// Apollo employee ranges (exact format)
+const APOLLO_EMPLOYEE_RANGES = [
+  { label: "1-10 (Micro/Seed)", value: "1,10" },
+  { label: "11-20", value: "11,20" },
+  { label: "21-50 (Small)", value: "21,50" },
+  { label: "51-100", value: "51,100" },
+  { label: "101-200", value: "101,200" },
+  { label: "201-500 (Mid-size)", value: "201,500" },
+  { label: "501-1000", value: "501,1000" },
+  { label: "1001-2000", value: "1001,2000" },
+  { label: "2001-5000", value: "2001,5000" },
+  { label: "5001-10000", value: "5001,10000" },
+  { label: "10001+", value: "10001," },
+];
+
+// Pre-loaded locations (major cities)
+const APOLLO_LOCATIONS = [
+  "Bangalore, India","Mumbai, India","Delhi, India","Hyderabad, India","Chennai, India","Pune, India",
+  "Kolkata, India","Ahmedabad, India","Noida, India","Gurgaon, India","Jaipur, India","Coimbatore, India",
+  "Kochi, India","Indore, India","Chandigarh, India",
+  "San Francisco, CA","New York, NY","Los Angeles, CA","Chicago, IL","Austin, TX","Seattle, WA","Boston, MA",
+  "Denver, CO","Miami, FL","Atlanta, GA","Dallas, TX","San Diego, CA","Portland, OR","Phoenix, AZ",
+  "London, United Kingdom","Berlin, Germany","Paris, France","Amsterdam, Netherlands","Dublin, Ireland",
+  "Singapore","Dubai, United Arab Emirates","Toronto, Canada","Sydney, Australia","Tel Aviv, Israel",
+  "Remote",
+];
 
 const theme = {
   gradient: "linear-gradient(135deg, #2563eb, #9333ea)",
@@ -38,17 +95,95 @@ const statusConfig = {
   drafting: { bg: "#f3e8ff", text: "#9333ea", label: "AI Drafting..." },
 };
 
-const parseEmployeeRange = (input) => {
-  if (!input) return [];
-  const s = input.toLowerCase();
-  if (s.includes("1-10") || s.includes("micro") || s.includes("seed")) return ["1,10"];
-  if (s.includes("11-20") || s.includes("10-20")) return ["11,20"];
-  if (s.includes("21-50") || s.includes("20-50") || s.includes("small")) return ["21,50"];
-  if (s.includes("51-100") || s.includes("50-100")) return ["51,100"];
-  if (s.includes("101-200") || s.includes("100-200")) return ["101,200"];
-  if (s.includes("201-500") || s.includes("200-500") || s.includes("medium")) return ["201,500"];
-  return ["1,10", "11,20", "21,50", "51,100"];
-};
+// ============================================================
+// SEARCHABLE MULTI-SELECT DROPDOWN (reusable)
+// ============================================================
+function SearchableSelect({ label, options, value, onChange, placeholder, multi = false }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filtered = options.filter((o) => {
+    const optLabel = typeof o === "string" ? o : o.label;
+    return optLabel.toLowerCase().includes(search.toLowerCase());
+  });
+
+  const isSelected = (opt) => {
+    const v = typeof opt === "string" ? opt : opt.value;
+    return multi ? (value || []).includes(v) : value === v;
+  };
+
+  const handleSelect = (opt) => {
+    const v = typeof opt === "string" ? opt : opt.value;
+    if (multi) {
+      const arr = value || [];
+      onChange(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
+    } else {
+      onChange(v);
+      setOpen(false);
+      setSearch("");
+    }
+  };
+
+  const displayValue = () => {
+    if (multi) {
+      const arr = value || [];
+      if (arr.length === 0) return placeholder || "Select...";
+      if (arr.length <= 2) return arr.map((v) => { const o = options.find((x) => (typeof x === "string" ? x : x.value) === v); return o ? (typeof o === "string" ? o : o.label) : v; }).join(", ");
+      return `${arr.length} selected`;
+    }
+    if (!value) return placeholder || "Select...";
+    const o = options.find((x) => (typeof x === "string" ? x : x.value) === value);
+    return o ? (typeof o === "string" ? o : o.label) : value;
+  };
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      {label && <label style={theme.label}>{label}</label>}
+      <div onClick={() => setOpen(!open)}
+        style={{ ...theme.input, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", color: (multi ? (value || []).length : value) ? "#111827" : "#9ca3af", minHeight: 38 }}>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{displayValue()}</span>
+        <span style={{ fontSize: 10, marginLeft: 8 }}>{open ? "▲" : "▼"}</span>
+      </div>
+      {open && (
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50, background: "#fff", border: "1px solid #d1d5db", borderRadius: 8, marginTop: 4, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", maxHeight: 240, display: "flex", flexDirection: "column" }}>
+          <div style={{ padding: 8, borderBottom: "1px solid #f3f4f6" }}>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." autoFocus
+              style={{ ...theme.input, padding: "6px 10px", fontSize: 13 }} />
+          </div>
+          <div style={{ overflowY: "auto", flex: 1 }}>
+            {filtered.length === 0 && <div style={{ padding: "12px 14px", fontSize: 13, color: "#9ca3af" }}>No results found</div>}
+            {filtered.map((opt) => {
+              const optLabel = typeof opt === "string" ? opt : opt.label;
+              const sel = isSelected(opt);
+              return (
+                <div key={optLabel} onClick={(e) => { e.stopPropagation(); handleSelect(opt); }}
+                  style={{ padding: "8px 14px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, background: sel ? "#eff6ff" : "transparent" }}
+                  onMouseEnter={(e) => { if (!sel) e.currentTarget.style.background = "#f9fafb"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = sel ? "#eff6ff" : "transparent"; }}>
+                  {multi && <span style={{ width: 16, height: 16, borderRadius: 4, border: sel ? "none" : "1.5px solid #d1d5db", background: sel ? "#2563eb" : "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10, flexShrink: 0 }}>{sel && "✓"}</span>}
+                  {optLabel}
+                </div>
+              );
+            })}
+          </div>
+          {multi && (
+            <div style={{ padding: 8, borderTop: "1px solid #f3f4f6", display: "flex", justifyContent: "space-between" }}>
+              <button onClick={() => onChange([])} style={{ ...theme.btnGhost, fontSize: 11, padding: "4px 8px" }}>Clear all</button>
+              <button onClick={() => setOpen(false)} style={{ ...theme.btnGhost, fontSize: 11, padding: "4px 8px", color: "#2563eb" }}>Done</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ============================================================
 // LANDING PAGE
@@ -67,12 +202,8 @@ function LandingPage({ onStart }) {
       </header>
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "80px 24px" }}>
         <div style={{ textAlign: "center", maxWidth: 720, margin: "0 auto 64px" }}>
-          <h1 style={{ fontSize: 48, fontWeight: 800, marginBottom: 20, background: theme.gradient, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", lineHeight: 1.15 }}>
-            AI-Powered Cold Email Outreach for Job Seekers
-          </h1>
-          <p style={{ fontSize: 18, color: "#6b7280", marginBottom: 32, lineHeight: 1.6 }}>
-            Stop spending hours researching companies and crafting personalized emails. Let AI do the heavy lifting while you focus on landing your dream job.
-          </p>
+          <h1 style={{ fontSize: 48, fontWeight: 800, marginBottom: 20, background: theme.gradient, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", lineHeight: 1.15 }}>AI-Powered Cold Email Outreach for Job Seekers</h1>
+          <p style={{ fontSize: 18, color: "#6b7280", marginBottom: 32, lineHeight: 1.6 }}>Stop spending hours researching companies and crafting personalized emails. Let AI do the heavy lifting while you focus on landing your dream job.</p>
           <button onClick={onStart} style={{ ...theme.btnPrimary, padding: "14px 32px", fontSize: 16 }}>Start Your Outreach Journey →</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, marginBottom: 64 }}>
@@ -118,10 +249,7 @@ function LoginScreen({ onLogin, onBack }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const [shake, setShake] = useState(false);
-  const handleLogin = () => {
-    if (password === CORRECT_PASSWORD) { onLogin(); }
-    else { setError(true); setShake(true); setTimeout(() => setShake(false), 500); }
-  };
+  const handleLogin = () => { if (password === CORRECT_PASSWORD) { onLogin(); } else { setError(true); setShake(true); setTimeout(() => setShake(false), 500); } };
   return (
     <div style={{ minHeight: "100vh", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', -apple-system, sans-serif" }}>
       <div style={{ ...theme.card, padding: "48px 40px", width: 400, textAlign: "center", animation: shake ? "shake 0.4s ease" : "none" }}>
@@ -140,10 +268,14 @@ function LoginScreen({ onLogin, onBack }) {
 }
 
 // ============================================================
-// ONBOARDING FORM
+// ONBOARDING FORM (Apollo-mapped dropdowns)
 // ============================================================
 function OnboardingForm({ onComplete, onBack }) {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", degree: "", college: "", gradYear: "", targetRole: "", location: "", industry: "", companySize: "", internships: "", skills: "", additional: "" });
+  const [form, setForm] = useState({
+    name: "", email: "", phone: "", degree: "", college: "", gradYear: "",
+    targetRole: "", locations: [], industries: [], companySize: [], keywords: "",
+    internships: "", skills: "", additional: "",
+  });
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -153,9 +285,10 @@ function OnboardingForm({ onComplete, onBack }) {
       form.degree && form.college ? `Degree: ${form.degree}, ${form.college}${form.gradYear ? ` (${form.gradYear})` : ""}` : "",
       form.phone ? `Phone: ${form.phone}` : "",
       form.targetRole ? `Target Role: ${form.targetRole}` : "",
-      form.location ? `Preferred Location: ${form.location}` : "",
-      form.industry ? `Target Industry: ${form.industry}` : "",
-      form.companySize ? `Company Size Preference: ${form.companySize}` : "",
+      form.locations.length ? `Preferred Location: ${form.locations.join(", ")}` : "",
+      form.industries.length ? `Target Industry: ${form.industries.join(", ")}` : "",
+      form.companySize.length ? `Company Size: ${form.companySize.map(v => { const r = APOLLO_EMPLOYEE_RANGES.find(x => x.value === v); return r ? r.label : v; }).join(", ")}` : "",
+      form.keywords ? `Keywords: ${form.keywords}` : "",
       form.internships ? `Internships & Experience:\n${form.internships}` : "",
       form.skills ? `Skills: ${form.skills}` : "",
       form.additional ? `Additional Context: ${form.additional}` : "",
@@ -177,8 +310,9 @@ function OnboardingForm({ onComplete, onBack }) {
       </header>
       <main style={{ maxWidth: 720, margin: "0 auto", padding: "40px 24px" }}>
         <h1 style={{ fontSize: 32, fontWeight: 800, color: "#111827", marginBottom: 8 }}>Set Up Your Profile</h1>
-        <p style={{ color: "#6b7280", marginBottom: 32, fontSize: 15 }}>Tell us about yourself. Our AI will use this to craft personalized outreach emails.</p>
+        <p style={{ color: "#6b7280", marginBottom: 32, fontSize: 15 }}>Tell us about yourself. All Apollo filters below map directly to the API — no guessing.</p>
         <form onSubmit={handleSubmit}>
+          {/* Section: Basic Info */}
           <div style={{ ...theme.card, padding: 28, marginBottom: 20 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Basic Information</h3>
             <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 18 }}>Your personal details and contact info</p>
@@ -191,16 +325,22 @@ function OnboardingForm({ onComplete, onBack }) {
               <div><label style={theme.label}>College</label><input type="text" value={form.college} onChange={(e) => set("college", e.target.value)} placeholder="Dr. NGP Institute of Technology" style={iStyle} /></div>
             </div>
           </div>
+          {/* Section: Apollo ICP Filters */}
           <div style={{ ...theme.card, padding: 28, marginBottom: 20 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Job Preferences</h3>
-            <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 18 }}>Help AI understand what you're looking for</p>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 4 }}>🎯 Apollo ICP Filters</h3>
+            <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 18 }}>These map directly to Apollo API. Only exact Apollo values are used.</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div><label style={theme.label}>Target Role *</label><input type="text" value={form.targetRole} onChange={(e) => set("targetRole", e.target.value)} placeholder="Marketing Intern" required style={iStyle} /></div>
-              <div><label style={theme.label}>Preferred Location</label><input type="text" value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="Bangalore, Remote" style={iStyle} /></div>
-              <div><label style={theme.label}>Target Industry</label><input type="text" value={form.industry} onChange={(e) => set("industry", e.target.value)} placeholder="SaaS, Digital Marketing, D2C" style={iStyle} /></div>
-              <div><label style={theme.label}>Ideal Company Size</label><input type="text" value={form.companySize} onChange={(e) => set("companySize", e.target.value)} placeholder="Seed stage, 20-50 employees" style={iStyle} /></div>
+              <SearchableSelect label="Account Location(s)" options={APOLLO_LOCATIONS} value={form.locations} onChange={(v) => set("locations", v)} placeholder="Select locations..." multi />
+              <SearchableSelect label="Industry" options={APOLLO_INDUSTRIES} value={form.industries} onChange={(v) => set("industries", v)} placeholder="Select industries..." multi />
+              <SearchableSelect label="Employee Count" options={APOLLO_EMPLOYEE_RANGES} value={form.companySize} onChange={(v) => set("companySize", v)} placeholder="Select size range..." multi />
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <label style={theme.label}>Target Keywords <span style={{ fontWeight: 400, color: "#9ca3af" }}>(comma-separated → maps to q_organization_keyword_tags)</span></label>
+              <input type="text" value={form.keywords} onChange={(e) => set("keywords", e.target.value)} placeholder="performance marketing, SEO, growth hacking, paid ads" style={iStyle} />
             </div>
           </div>
+          {/* Section: Experience & Skills */}
           <div style={{ ...theme.card, padding: 28, marginBottom: 20 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Experience & Skills</h3>
             <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 18 }}>Your background that AI will reference in emails</p>
@@ -210,6 +350,7 @@ function OnboardingForm({ onComplete, onBack }) {
             </div>
             <div><label style={theme.label}>Skills</label><input type="text" value={form.skills} onChange={(e) => set("skills", e.target.value)} placeholder="SEO, Apollo.io, HubSpot CRM, Google Ads" style={iStyle} /></div>
           </div>
+          {/* Section: Additional */}
           <div style={{ ...theme.card, padding: 28, marginBottom: 28 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Additional Instructions</h3>
             <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 18 }}>Anything else AI should know</p>
@@ -241,11 +382,7 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
   useEffect(() => { searchCompanies(); }, []);
 
   const callApollo = async (endpoint, body) => {
-    const res = await fetch("/api/apollo", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ endpoint, ...body }),
-    });
+    const res = await fetch("/api/apollo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint, ...body }) });
     if (!res.ok) throw new Error("Apollo API error: " + res.status);
     return res.json();
   };
@@ -255,11 +392,12 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
     setError(null);
     try {
       const body = { page: 1, per_page: 25 };
-      if (userProfile?.location) body.organization_locations = [userProfile.location];
-      if (userProfile?.industry) body.q_organization_keyword_tags = userProfile.industry.split(",").map(s => s.trim());
-      const ranges = parseEmployeeRange(userProfile?.companySize);
-      if (ranges.length) body.organization_num_employees_ranges = ranges;
-
+      if (userProfile?.locations?.length) body.organization_locations = userProfile.locations;
+      if (userProfile?.industries?.length) body.organization_industries = userProfile.industries;
+      if (userProfile?.companySize?.length) body.organization_num_employees_ranges = userProfile.companySize;
+      if (userProfile?.keywords) {
+        body.q_organization_keyword_tags = userProfile.keywords.split(",").map(s => s.trim()).filter(Boolean);
+      }
       const data = await callApollo("organizations/search", body);
       if (data.organizations && data.organizations.length > 0) {
         setCompanies(data.organizations);
@@ -267,9 +405,7 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
       } else {
         setError("No companies found matching your criteria. Try broader filters.");
       }
-    } catch (err) {
-      setError("Failed to search companies: " + err.message);
-    }
+    } catch (err) { setError("Failed to search companies: " + err.message); }
     setLoading(false);
   };
 
@@ -290,11 +426,7 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
         }
       } catch (err) { console.error("Failed for " + org.name, err); }
     }
-    if (allPeople.length === 0) {
-      setError("No people with emails found. Try selecting different companies.");
-      setLoadingPeople(false);
-      return;
-    }
+    if (allPeople.length === 0) { setError("No people with emails found. Try selecting different companies."); setLoadingPeople(false); return; }
     setPeople(allPeople);
     setSelectedPeople(new Set(allPeople.map(p => p.id)));
     setStep("people");
@@ -303,15 +435,12 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
 
   const toggleOrg = (id) => { const n = new Set(selectedOrgs); if (n.has(id)) n.delete(id); else n.add(id); setSelectedOrgs(n); };
   const togglePerson = (id) => { const n = new Set(selectedPeople); if (n.has(id)) n.delete(id); else n.add(id); setSelectedPeople(n); };
-
   const handleContinue = () => {
-    const contacts = people.filter(p => selectedPeople.has(p.id)).map((p, i) => ({
-      id: Date.now() + i, founder: p.name, firstName: p.firstName, title: p.title, company: p.company, email: p.email, subject: "", body: "", status: "pending",
-    }));
+    const contacts = people.filter(p => selectedPeople.has(p.id)).map((p, i) => ({ id: Date.now() + i, founder: p.name, firstName: p.firstName, title: p.title, company: p.company, email: p.email, subject: "", body: "", status: "pending" }));
     onContinue(contacts);
   };
 
-  const Header = () => (
+  const NavHeader = () => (
     <header style={{ padding: "16px 24px", borderBottom: "1px solid #e5e7eb", background: "rgba(255,255,255,0.8)", backdropFilter: "blur(8px)" }}>
       <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <button onClick={step === "people" ? () => setStep("companies") : onBack} style={theme.btnGhost}>← Back</button>
@@ -326,11 +455,13 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", background: theme.bg, fontFamily: "'Inter', -apple-system, sans-serif" }}>
-        <Header />
+        <NavHeader />
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "60vh", gap: 16 }}>
           <div style={{ fontSize: 48 }}>🔍</div>
           <div style={{ fontSize: 16, fontWeight: 600, color: "#111827" }}>Searching Apollo for companies...</div>
-          <div style={{ fontSize: 13, color: "#9ca3af" }}>Looking for {userProfile?.industry || "companies"} in {userProfile?.location || "your area"}</div>
+          <div style={{ fontSize: 13, color: "#9ca3af" }}>
+            {userProfile?.industries?.length ? userProfile.industries.join(", ") : "companies"} in {userProfile?.locations?.length ? userProfile.locations.join(", ") : "your area"}
+          </div>
         </div>
       </div>
     );
@@ -338,9 +469,8 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
 
   return (
     <div style={{ minHeight: "100vh", background: theme.bg, fontFamily: "'Inter', -apple-system, sans-serif" }}>
-      <Header />
+      <NavHeader />
       <main style={{ maxWidth: 800, margin: "0 auto", padding: "40px 24px" }}>
-
         {step === "companies" && (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
@@ -355,15 +485,10 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
               {companies.map((c) => (
                 <div key={c.id} onClick={() => toggleOrg(c.id)}
                   style={{ ...theme.card, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", borderColor: selectedOrgs.has(c.id) ? "#2563eb" : "#e5e7eb", background: selectedOrgs.has(c.id) ? "#eff6ff" : "#fff", transition: "all 0.15s" }}>
-                  <div style={{ width: 22, height: 22, borderRadius: 6, border: selectedOrgs.has(c.id) ? "none" : "2px solid #d1d5db", background: selectedOrgs.has(c.id) ? theme.gradient : "#fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
-                    {selectedOrgs.has(c.id) && "✓"}
-                  </div>
+                  <div style={{ width: 22, height: 22, borderRadius: 6, border: selectedOrgs.has(c.id) ? "none" : "2px solid #d1d5db", background: selectedOrgs.has(c.id) ? theme.gradient : "#fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{selectedOrgs.has(c.id) && "✓"}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, color: "#111827", fontSize: 14 }}>{c.name}</div>
-                    <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
-                      {c.industry || "Unknown industry"} · {c.estimated_num_employees ? `~${c.estimated_num_employees} employees` : "Size unknown"}
-                      {c.city ? ` · ${c.city}${c.state ? ", " + c.state : ""}` : ""}
-                    </div>
+                    <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{c.industry || "Unknown industry"} · {c.estimated_num_employees ? `~${c.estimated_num_employees} employees` : "Size unknown"}{c.city ? ` · ${c.city}${c.state ? ", " + c.state : ""}` : ""}</div>
                   </div>
                   {c.primary_domain && <div style={{ fontSize: 11, color: "#9ca3af" }}>{c.primary_domain}</div>}
                 </div>
@@ -378,7 +503,6 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
             </div>
           </>
         )}
-
         {step === "people" && (
           <>
             <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", marginBottom: 6 }}>Select People to Contact</h1>
@@ -388,9 +512,7 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
               {people.map((p) => (
                 <div key={p.id} onClick={() => togglePerson(p.id)}
                   style={{ ...theme.card, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", borderColor: selectedPeople.has(p.id) ? "#2563eb" : "#e5e7eb", background: selectedPeople.has(p.id) ? "#eff6ff" : "#fff", transition: "all 0.15s" }}>
-                  <div style={{ width: 22, height: 22, borderRadius: 6, border: selectedPeople.has(p.id) ? "none" : "2px solid #d1d5db", background: selectedPeople.has(p.id) ? theme.gradient : "#fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
-                    {selectedPeople.has(p.id) && "✓"}
-                  </div>
+                  <div style={{ width: 22, height: 22, borderRadius: 6, border: selectedPeople.has(p.id) ? "none" : "2px solid #d1d5db", background: selectedPeople.has(p.id) ? theme.gradient : "#fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{selectedPeople.has(p.id) && "✓"}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, color: "#111827", fontSize: 14 }}>{p.name}</div>
                     <div style={{ fontSize: 12, color: "#6b7280" }}>{p.title} at {p.company}</div>
@@ -402,9 +524,7 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 13, color: "#6b7280" }}>{selectedPeople.size} of {people.length} selected</span>
               <button onClick={handleContinue} disabled={selectedPeople.size === 0}
-                style={{ ...theme.btnPrimary, opacity: selectedPeople.size === 0 ? 0.5 : 1 }}>
-                Draft Emails for {selectedPeople.size} People →
-              </button>
+                style={{ ...theme.btnPrimary, opacity: selectedPeople.size === 0 ? 0.5 : 1 }}>Draft Emails for {selectedPeople.size} People →</button>
             </div>
           </>
         )}
@@ -427,13 +547,11 @@ function EmailDashboard({ resumeContext, userProfile, initialContacts, onLogout 
   const [aiInstructions, setAiInstructions] = useState("");
   const [showAddContact, setShowAddContact] = useState(false);
   const [newContact, setNewContact] = useState({ firstName: "", lastName: "", company: "", email: "", title: "", whatTheyDo: "" });
-
   const current = emailList[selected] || {};
   const showToast = (msg, type = "success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
   const updateEmail = (id, updates) => setEmailList((prev) => prev.map((e) => (e.id === id ? { ...e, ...updates } : e)));
   const startEdit = () => { setEditBody(current.body); setEditSubject(current.subject); setEditing(true); };
   const saveEdit = () => { updateEmail(current.id, { body: editBody, subject: editSubject }); setEditing(false); showToast("Saved ✓"); };
-
   const draftWithAI = async (emailObj) => {
     if (!CLAUDE_API_KEY) { showToast("Claude API key not configured", "error"); return; }
     updateEmail(emailObj.id, { status: "drafting" });
@@ -455,7 +573,6 @@ ${resumeContext}`;
       } else { throw new Error(data.error?.message || "API error"); }
     } catch (err) { updateEmail(emailObj.id, { status: "pending" }); showToast("AI draft failed: " + err.message, "error"); }
   };
-
   const handleSend = async (emailObj) => {
     if (emailObj.status !== "approved") { showToast("Approve the email first", "error"); return; }
     setSendingId(emailObj.id);
@@ -464,11 +581,10 @@ ${resumeContext}`;
     setSendingId(null);
     showToast(`Email sent to ${emailObj.founder} ✓`);
   };
-
   const addContact = async () => {
     if (!newContact.firstName || !newContact.email) { showToast("First name and email required", "error"); return; }
     const fullName = `${newContact.firstName} ${newContact.lastName}`.trim();
-    const entry = { id: Date.now(), founder: fullName, firstName: newContact.firstName, title: newContact.title || "Founder", company: newContact.company, email: newContact.email, whatTheyDo: newContact.whatTheyDo, subject: "", body: "", status: "pending" };
+    const entry = { id: Date.now(), founder: fullName, firstName: newContact.firstName, title: newContact.title || "Founder", company: newContact.company, email: newContact.email, subject: "", body: "", status: "pending" };
     setEmailList((p) => [...p, entry]);
     setSelected(emailList.length);
     setShowAddContact(false);
@@ -476,7 +592,6 @@ ${resumeContext}`;
     showToast(`${fullName} added — drafting...`);
     await draftWithAI(entry);
   };
-
   const approvedCount = emailList.filter((e) => e.status === "approved").length;
   const sentCount = emailList.filter((e) => e.status === "sent").length;
   const pendingCount = emailList.filter((e) => e.status === "pending").length;
@@ -484,11 +599,7 @@ ${resumeContext}`;
   if (emailList.length === 0) {
     return (
       <div style={{ minHeight: "100vh", background: theme.bg, fontFamily: "'Inter', -apple-system, sans-serif", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>📭</div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: "#111827", marginBottom: 8 }}>No contacts selected</h2>
-          <button onClick={onLogout} style={theme.btnPrimary}>← Start Over</button>
-        </div>
+        <div style={{ textAlign: "center" }}><div style={{ fontSize: 48, marginBottom: 16 }}>📭</div><h2 style={{ fontSize: 20, fontWeight: 700, color: "#111827", marginBottom: 8 }}>No contacts selected</h2><button onClick={onLogout} style={theme.btnPrimary}>← Start Over</button></div>
       </div>
     );
   }
@@ -498,17 +609,11 @@ ${resumeContext}`;
       <div style={{ borderBottom: "1px solid #e5e7eb", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, background: theme.gradient, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>✨</div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#111827" }}>OutreachAI Dashboard</div>
-            <div style={{ fontSize: 11, color: "#9ca3af" }}>Powered by Claude · {userProfile?.name || "User"}</div>
-          </div>
+          <div><div style={{ fontSize: 15, fontWeight: 700, color: "#111827" }}>OutreachAI Dashboard</div><div style={{ fontSize: 11, color: "#9ca3af" }}>Powered by Claude · {userProfile?.name || "User"}</div></div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           {[{ l: "Pending", v: pendingCount, c: "#6b7280" }, { l: "Approved", v: approvedCount, c: "#16a34a" }, { l: "Sent", v: sentCount, c: "#2563eb" }].map((s) => (
-            <div key={s.l} style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 18, fontWeight: 800, color: s.c }}>{s.v}</div>
-              <div style={{ fontSize: 10, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em" }}>{s.l}</div>
-            </div>
+            <div key={s.l} style={{ textAlign: "center" }}><div style={{ fontSize: 18, fontWeight: 800, color: s.c }}>{s.v}</div><div style={{ fontSize: 10, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em" }}>{s.l}</div></div>
           ))}
           <button onClick={() => setShowAddContact(true)} style={{ ...theme.btnPrimary, padding: "8px 14px", fontSize: 12 }}>+ Add Contact</button>
           <button onClick={onLogout} style={{ ...theme.btnGhost, fontSize: 11 }}>Logout</button>
@@ -547,10 +652,7 @@ ${resumeContext}`;
               )}
               {current.status === "drafting" && <div style={{ padding: "6px 14px", borderRadius: 6, background: "#f3e8ff", color: "#9333ea", fontSize: 11 }}>⏳ AI Writing...</div>}
               {!editing && current.status !== "sent" && current.status !== "drafting" && <button onClick={startEdit} style={{ ...theme.btnOutline, padding: "6px 12px", fontSize: 11 }}>✎ Edit</button>}
-              {editing && (
-                <><button onClick={() => setEditing(false)} style={{ ...theme.btnOutline, padding: "6px 12px", fontSize: 11 }}>Cancel</button>
-                <button onClick={saveEdit} style={{ ...theme.btnPrimary, padding: "6px 12px", fontSize: 11 }}>Save</button></>
-              )}
+              {editing && (<><button onClick={() => setEditing(false)} style={{ ...theme.btnOutline, padding: "6px 12px", fontSize: 11 }}>Cancel</button><button onClick={saveEdit} style={{ ...theme.btnPrimary, padding: "6px 12px", fontSize: 11 }}>Save</button></>)}
               {current.status === "pending" && !editing && (
                 <>
                   <button onClick={() => { updateEmail(current.id, { status: "rejected" }); showToast("Rejected", "error"); }} style={{ ...theme.btnOutline, padding: "6px 12px", fontSize: 11, color: "#dc2626", borderColor: "#fecaca" }}>✕ Reject</button>
@@ -568,16 +670,11 @@ ${resumeContext}`;
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
             {current.status === "drafting" ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 16 }}>
-                <div style={{ fontSize: 40 }}>🤖</div>
-                <div style={{ fontSize: 14, color: "#9333ea", fontWeight: 600 }}>Claude is writing your email for {current.company}...</div>
-              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 16 }}><div style={{ fontSize: 40 }}>🤖</div><div style={{ fontSize: 14, color: "#9333ea", fontWeight: 600 }}>Claude is writing your email for {current.company}...</div></div>
             ) : editing ? (
               <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} style={{ ...theme.input, width: "100%", minHeight: 340, resize: "vertical", lineHeight: 1.8, fontSize: 13.5 }} />
             ) : (
-              <div style={{ ...theme.card, padding: "24px 28px", lineHeight: 1.85, fontSize: 13.5, color: "#374151", whiteSpace: "pre-wrap", maxWidth: 660 }}>
-                {current.body || <span style={{ color: "#9ca3af", fontStyle: "italic" }}>No email yet. Click 🤖 Draft to generate one.</span>}
-              </div>
+              <div style={{ ...theme.card, padding: "24px 28px", lineHeight: 1.85, fontSize: 13.5, color: "#374151", whiteSpace: "pre-wrap", maxWidth: 660 }}>{current.body || <span style={{ color: "#9ca3af", fontStyle: "italic" }}>No email yet. Click 🤖 Draft to generate one.</span>}</div>
             )}
           </div>
         </div>
@@ -593,18 +690,11 @@ ${resumeContext}`;
               ))}
             </div>
             <textarea value={newContact.whatTheyDo} onChange={(e) => setNewContact((n) => ({ ...n, whatTheyDo: e.target.value }))} placeholder="What does the company do?" rows={3} style={{ ...theme.input, resize: "vertical", marginBottom: 16 }} />
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setShowAddContact(false)} style={{ ...theme.btnOutline, flex: 1 }}>Cancel</button>
-              <button onClick={addContact} style={{ ...theme.btnPrimary, flex: 2 }}>🤖 Add & Draft</button>
-            </div>
+            <div style={{ display: "flex", gap: 8 }}><button onClick={() => setShowAddContact(false)} style={{ ...theme.btnOutline, flex: 1 }}>Cancel</button><button onClick={addContact} style={{ ...theme.btnPrimary, flex: 2 }}>🤖 Add & Draft</button></div>
           </div>
         </div>
       )}
-      {toast && (
-        <div style={{ position: "fixed", bottom: 24, right: 24, background: toast.type === "error" ? "#fef2f2" : "#f0fdf4", border: `1px solid ${toast.type === "error" ? "#fecaca" : "#bbf7d0"}`, color: toast.type === "error" ? "#dc2626" : "#16a34a", padding: "12px 20px", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 1000 }}>
-          {toast.msg}
-        </div>
-      )}
+      {toast && (<div style={{ position: "fixed", bottom: 24, right: 24, background: toast.type === "error" ? "#fef2f2" : "#f0fdf4", border: `1px solid ${toast.type === "error" ? "#fecaca" : "#bbf7d0"}`, color: toast.type === "error" ? "#dc2626" : "#16a34a", padding: "12px 20px", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 1000 }}>{toast.msg}</div>)}
     </div>
   );
 }
@@ -617,10 +707,8 @@ export default function App() {
   const [resumeContext, setResumeContext] = useState("");
   const [userProfile, setUserProfile] = useState(null);
   const [selectedContacts, setSelectedContacts] = useState([]);
-
   const handleOnboardingComplete = (ctx, profile) => { setResumeContext(ctx); setUserProfile(profile); setScreen("companies"); };
   const handleCompanyContinue = (contacts) => { setSelectedContacts(contacts); setScreen("dashboard"); };
-
   return (
     <>
       {screen === "landing" && <LandingPage onStart={() => setScreen("login")} />}
