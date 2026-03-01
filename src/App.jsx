@@ -52,15 +52,40 @@ const APOLLO_EMPLOYEE_RANGES = [
 
 // Pre-loaded locations (major cities)
 const APOLLO_LOCATIONS = [
-  "Bangalore, India","Mumbai, India","Delhi, India","Hyderabad, India","Chennai, India","Pune, India",
-  "Kolkata, India","Ahmedabad, India","Noida, India","Gurgaon, India","Jaipur, India","Coimbatore, India",
-  "Kochi, India","Indore, India","Chandigarh, India",
-  "San Francisco, CA","New York, NY","Los Angeles, CA","Chicago, IL","Austin, TX","Seattle, WA","Boston, MA",
-  "Denver, CO","Miami, FL","Atlanta, GA","Dallas, TX","San Diego, CA","Portland, OR","Phoenix, AZ",
-  "London, United Kingdom","Berlin, Germany","Paris, France","Amsterdam, Netherlands","Dublin, Ireland",
-  "Singapore","Dubai, United Arab Emirates","Toronto, Canada","Sydney, Australia","Tel Aviv, Israel",
+  // India - Major Metros
+  "Bangalore, India","Mumbai, India","Delhi, India","New Delhi, India","Hyderabad, India","Chennai, India",
+  "Pune, India","Kolkata, India","Ahmedabad, India","Noida, India","Gurgaon, India",
+  // India - Tier 2
+  "Jaipur, India","Coimbatore, India","Kochi, India","Indore, India","Chandigarh, India",
+  "Lucknow, India","Nagpur, India","Bhopal, India","Visakhapatnam, India","Trivandrum, India",
+  "Thiruvananthapuram, India","Madurai, India","Vadodara, India","Surat, India","Rajkot, India",
+  "Mysore, India","Mangalore, India","Hubli, India","Salem, India","Tiruchirappalli, India",
+  // India - Tier 3 & Emerging
+  "Bhubaneswar, India","Dehradun, India","Ranchi, India","Guwahati, India","Patna, India",
+  "Raipur, India","Vijayawada, India","Jodhpur, India","Udaipur, India","Nashik, India",
+  "Aurangabad, India","Goa, India","Pondicherry, India","Kozhikode, India","Thrissur, India",
+  "Tiruvottiyur, India","Navi Mumbai, India","Thane, India","Faridabad, India","Ghaziabad, India",
+  "Greater Noida, India",
+  // USA - Major Tech Hubs
+  "San Francisco, CA","New York, NY","Los Angeles, CA","Chicago, IL","Austin, TX","Seattle, WA",
+  "Boston, MA","Denver, CO","Miami, FL","Atlanta, GA","Dallas, TX","San Diego, CA",
+  "Portland, OR","Phoenix, AZ","San Jose, CA","Palo Alto, CA","Mountain View, CA",
+  // USA - Secondary Tech Cities
+  "Raleigh, NC","Nashville, TN","Salt Lake City, UT","Minneapolis, MN","Detroit, MI",
+  "Pittsburgh, PA","Charlotte, NC","Columbus, OH","Indianapolis, IN","Kansas City, MO",
+  "St. Louis, MO","Tampa, FL","Orlando, FL","Las Vegas, NV","Sacramento, CA",
+  "Houston, TX","San Antonio, TX","Philadelphia, PA","Washington, DC","Baltimore, MD",
+  "Milwaukee, WI","Cincinnati, OH","Cleveland, OH","Richmond, VA","Omaha, NE",
+  "Boise, ID","Tucson, AZ","Jacksonville, FL","Memphis, TN","Louisville, KY",
+  // Global Hubs (bonus)
+  "London, United Kingdom","Berlin, Germany","Paris, France","Amsterdam, Netherlands",
+  "Dublin, Ireland","Singapore","Dubai, United Arab Emirates","Toronto, Canada",
+  "Vancouver, Canada","Sydney, Australia","Melbourne, Australia","Tel Aviv, Israel",
+  "Stockholm, Sweden","Lisbon, Portugal","Barcelona, Spain",
+  // Flexible
   "Remote",
 ];
+
 
 const theme = {
   gradient: "linear-gradient(135deg, #2563eb, #9333ea)",
