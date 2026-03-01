@@ -403,6 +403,7 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
   const [selectedPeople, setSelectedPeople] = useState(new Set());
   const [step, setStep] = useState("companies");
   const [error, setError] = useState(null);
+  const [manualEmail, setManualEmail] = useState({});
 
   useEffect(() => { searchCompanies(); }, []);
 
@@ -417,17 +418,17 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
     setError(null);
     try {
       const body = { page: 1, per_page: 25 };
-     if (userProfile?.locations?.length) body.organization_locations = userProfile.locations;
-if (userProfile?.companySize?.length) body.organization_num_employees_ranges = userProfile.companySize;
+      if (userProfile?.locations?.length) body.organization_locations = userProfile.locations;
+      if (userProfile?.companySize?.length) body.organization_num_employees_ranges = userProfile.companySize;
+      const keywordTags = [];
+      if (userProfile?.industries?.length) {
+        userProfile.industries.forEach(ind => keywordTags.push(ind.toLowerCase()));
+      }
+      if (userProfile?.keywords) {
+        userProfile.keywords.split(",").map(s => s.trim()).filter(Boolean).forEach(k => keywordTags.push(k));
+      }
+      if (keywordTags.length) body.q_organization_keyword_tags = keywordTags;
 
-const keywordTags = [];
-if (userProfile?.industries?.length) {
-  userProfile.industries.forEach(ind => keywordTags.push(ind.toLowerCase()));
-}
-if (userProfile?.keywords) {
-  userProfile.keywords.split(",").map(s => s.trim()).filter(Boolean).forEach(k => keywordTags.push(k));
-}
-if (keywordTags.length) body.q_organization_keyword_tags = keywordTags;
       const data = await callApollo("organizations/search", body);
       if (data.organizations && data.organizations.length > 0) {
         setCompanies(data.organizations);
@@ -449,26 +450,64 @@ if (keywordTags.length) body.q_organization_keyword_tags = keywordTags;
         const data = await callApollo("mixed_people/organization_top_people", { organization_id: org.id });
         if (data.people) {
           data.people.slice(0, 5).forEach(p => {
-            if (p.email) {
-              allPeople.push({ id: p.id, name: p.name, firstName: p.first_name, title: p.title || "Founder", company: org.name, companyDomain: org.primary_domain, email: p.email, orgId: org.id });
-            }
+            allPeople.push({
+              id: p.id,
+              name: p.name || (p.first_name + " " + (p.last_name || "")).trim(),
+              firstName: p.first_name,
+              title: p.title || "Unknown Role",
+              company: org.name,
+              companyDomain: org.primary_domain,
+              email: p.email || null,
+              orgId: org.id,
+            });
           });
         }
       } catch (err) { console.error("Failed for " + org.name, err); }
     }
-    if (allPeople.length === 0) { setError("No people with emails found. Try selecting different companies."); setLoadingPeople(false); return; }
+    if (allPeople.length === 0) {
+      setError("No people found at these companies. Try selecting different ones.");
+      setLoadingPeople(false);
+      return;
+    }
     setPeople(allPeople);
-    setSelectedPeople(new Set(allPeople.map(p => p.id)));
+    setSelectedPeople(new Set(allPeople.filter(p => p.email).map(p => p.id)));
     setStep("people");
     setLoadingPeople(false);
   };
 
   const toggleOrg = (id) => { const n = new Set(selectedOrgs); if (n.has(id)) n.delete(id); else n.add(id); setSelectedOrgs(n); };
-  const togglePerson = (id) => { const n = new Set(selectedPeople); if (n.has(id)) n.delete(id); else n.add(id); setSelectedPeople(n); };
+  const togglePerson = (id) => {
+    const person = people.find(p => p.id === id);
+    const hasEmail = person?.email || manualEmail[id];
+    if (!hasEmail) return;
+    const n = new Set(selectedPeople); if (n.has(id)) n.delete(id); else n.add(id); setSelectedPeople(n);
+  };
+
   const handleContinue = () => {
-    const contacts = people.filter(p => selectedPeople.has(p.id)).map((p, i) => ({ id: Date.now() + i, founder: p.name, firstName: p.firstName, title: p.title, company: p.company, email: p.email, subject: "", body: "", status: "pending" }));
+    const contacts = people.filter(p => selectedPeople.has(p.id)).map((p, i) => ({
+      id: Date.now() + i,
+      founder: p.name,
+      firstName: p.firstName,
+      title: p.title,
+      company: p.company,
+      email: p.email || manualEmail[p.id] || "",
+      subject: "",
+      body: "",
+      status: "pending",
+    }));
+    if (contacts.length === 0) { setError("Select at least one person with an email."); return; }
     onContinue(contacts);
   };
+
+  const handleManualEmail = (personId, email) => {
+    setManualEmail(prev => ({ ...prev, [personId]: email }));
+    if (email && email.includes("@")) {
+      setSelectedPeople(prev => new Set([...prev, personId]));
+    }
+  };
+
+  const withEmail = people.filter(p => p.email || manualEmail[p.id]);
+  const withoutEmail = people.filter(p => !p.email && !manualEmail[p.id]);
 
   const NavHeader = () => (
     <header style={{ padding: "16px 24px", borderBottom: "1px solid #e5e7eb", background: "rgba(255,255,255,0.8)", backdropFilter: "blur(8px)" }}>
@@ -528,33 +567,74 @@ if (keywordTags.length) body.q_organization_keyword_tags = keywordTags;
               <span style={{ fontSize: 13, color: "#6b7280" }}>{selectedOrgs.size} of {companies.length} selected</span>
               <button onClick={fetchPeople} disabled={selectedOrgs.size === 0 || loadingPeople}
                 style={{ ...theme.btnPrimary, opacity: selectedOrgs.size === 0 ? 0.5 : 1 }}>
-                {loadingPeople ? "⏳ Finding founders..." : `Find Founders at ${selectedOrgs.size} Companies →`}
+                {loadingPeople ? "⏳ Finding people..." : `Find People at ${selectedOrgs.size} Companies →`}
               </button>
             </div>
           </>
         )}
+
         {step === "people" && (
           <>
             <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", marginBottom: 6 }}>Select People to Contact</h1>
-            <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 24 }}>Found {people.length} people with emails. Select who you want to reach out to.</p>
-            {error && <div style={{ ...theme.card, padding: 16, marginBottom: 16, borderColor: "#fecaca", background: "#fef2f2", color: "#dc2626", fontSize: 13 }}>{error}</div>}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
-              {people.map((p) => (
-                <div key={p.id} onClick={() => togglePerson(p.id)}
-                  style={{ ...theme.card, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", borderColor: selectedPeople.has(p.id) ? "#2563eb" : "#e5e7eb", background: selectedPeople.has(p.id) ? "#eff6ff" : "#fff", transition: "all 0.15s" }}>
-                  <div style={{ width: 22, height: 22, borderRadius: 6, border: selectedPeople.has(p.id) ? "none" : "2px solid #d1d5db", background: selectedPeople.has(p.id) ? theme.gradient : "#fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{selectedPeople.has(p.id) && "✓"}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, color: "#111827", fontSize: 14 }}>{p.name}</div>
-                    <div style={{ fontSize: 12, color: "#6b7280" }}>{p.title} at {p.company}</div>
-                  </div>
-                  <div style={{ fontSize: 12, color: "#9ca3af" }}>{p.email}</div>
-                </div>
-              ))}
+            <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 8 }}>
+              Found {people.length} people · <span style={{ color: "#16a34a", fontWeight: 600 }}>{withEmail.length} with email</span> · <span style={{ color: "#dc2626" }}>{withoutEmail.length} without email</span>
+            </p>
+            <div style={{ ...theme.card, padding: "10px 14px", marginBottom: 20, background: "#eff6ff", borderColor: "#bfdbfe", fontSize: 12, color: "#1e40af", lineHeight: 1.5 }}>
+              💡 <strong>Free plan:</strong> Apollo shows names & titles for free. Some emails are already available. For people without emails, you can type their email manually (find it on LinkedIn or their website).
             </div>
+            {error && <div style={{ ...theme.card, padding: 16, marginBottom: 16, borderColor: "#fecaca", background: "#fef2f2", color: "#dc2626", fontSize: 13 }}>{error}</div>}
+
+            {withEmail.length > 0 && (
+              <>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>✉️ Email Available ({withEmail.length})</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+                  {withEmail.map((p) => (
+                    <div key={p.id} onClick={() => togglePerson(p.id)}
+                      style={{ ...theme.card, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", borderColor: selectedPeople.has(p.id) ? "#2563eb" : "#e5e7eb", background: selectedPeople.has(p.id) ? "#eff6ff" : "#fff", transition: "all 0.15s" }}>
+                      <div style={{ width: 22, height: 22, borderRadius: 6, border: selectedPeople.has(p.id) ? "none" : "2px solid #d1d5db", background: selectedPeople.has(p.id) ? theme.gradient : "#fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{selectedPeople.has(p.id) && "✓"}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, color: "#111827", fontSize: 14 }}>{p.name}</div>
+                        <div style={{ fontSize: 12, color: "#6b7280" }}>{p.title} at {p.company}</div>
+                      </div>
+                      <div style={{ fontSize: 12, color: "#16a34a", fontWeight: 500 }}>{p.email || manualEmail[p.id]}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {withoutEmail.length > 0 && (
+              <>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#dc2626", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>🔒 No Email — Add Manually ({withoutEmail.length})</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+                  {withoutEmail.map((p) => (
+                    <div key={p.id}
+                      style={{ ...theme.card, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, borderColor: "#f3f4f6", background: "#fafafa" }}>
+                      <div style={{ width: 22, height: 22, borderRadius: 6, border: "2px solid #e5e7eb", background: "#f3f4f6", flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, color: "#6b7280", fontSize: 14 }}>{p.name}</div>
+                        <div style={{ fontSize: 12, color: "#9ca3af" }}>{p.title} at {p.company}</div>
+                      </div>
+                      <input
+                        type="email"
+                        value={manualEmail[p.id] || ""}
+                        onChange={(e) => handleManualEmail(p.id, e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        placeholder="Type email to unlock"
+                        style={{ ...theme.input, width: 200, padding: "5px 10px", fontSize: 11, borderColor: manualEmail[p.id]?.includes("@") ? "#16a34a" : "#d1d5db" }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 13, color: "#6b7280" }}>{selectedPeople.size} of {people.length} selected</span>
+              <span style={{ fontSize: 13, color: "#6b7280" }}>{selectedPeople.size} people selected for outreach</span>
               <button onClick={handleContinue} disabled={selectedPeople.size === 0}
-                style={{ ...theme.btnPrimary, opacity: selectedPeople.size === 0 ? 0.5 : 1 }}>Draft Emails for {selectedPeople.size} People →</button>
+                style={{ ...theme.btnPrimary, opacity: selectedPeople.size === 0 ? 0.5 : 1 }}>
+                Draft Emails for {selectedPeople.size} People →
+              </button>
             </div>
           </>
         )}
