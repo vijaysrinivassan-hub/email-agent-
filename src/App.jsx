@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 // ============================================================
 // CHANGE YOUR PASSWORD HERE
@@ -107,6 +108,7 @@ function EmailAgent({ onLogout }) {
   const [editSubject, setEditSubject] = useState("");
   const [editFounder, setEditFounder] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [toast, setToast] = useState(null);
   const [aiInstructions, setAiInstructions] = useState("");
   const [showAddContact, setShowAddContact] = useState(false);
   const [newContact, setNewContact] = useState({ firstName: "", lastName: "", company: "", email: "", title: "", whatTheyDo: "" });
@@ -278,41 +280,11 @@ ${RESUME_CONTEXT}`;
 
             <div style={{ display: "flex", gap: 7 }}>
               {current.status !== "sent" && current.status !== "drafting" && (
-  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-    <input
-      value={aiInstructions}
-      onChange={(e) => setAiInstructions(e.target.value)}
-      placeholder="e.g. Mention I love their recent podcast episode..."
-      style={{
-        background: "#111827",
-        border: "1px solid #334155",
-        borderRadius: 6,
-        padding: "6px 10px",
-        color: "#e2e8f0",
-        fontSize: 11,
-        outline: "none",
-        width: 280,
-      }}
-    />
-    <button
-      onClick={() => draftWithAI(current)}
-      style={{
-        padding: "6px 13px",
-        borderRadius: 6,
-        border: "none",
-        cursor: "pointer",
-        background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
-        color: "#fff",
-        fontSize: 11,
-        fontWeight: 700,
-        whiteSpace: "nowrap",
-      }}
-    >
-      🤖 Draft with AI
-    </button>
-  </div>
-)}
-
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input value={aiInstructions} onChange={(e) => setAiInstructions(e.target.value)} placeholder="e.g. Mention I love their recent podcast..." style={{ background: "#111827", border: "1px solid #334155", borderRadius: 6, padding: "6px 10px", color: "#e2e8f0", fontSize: 11, outline: "none", width: 280 }} />
+                  <button onClick={() => draftWithAI(current)} style={{ padding: "6px 13px", borderRadius: 6, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #7c3aed, #4f46e5)", color: "#fff", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>🤖 Draft with AI</button>
+                </div>
+              )}
               {current.status === "drafting" && (
                 <div style={{ padding: "6px 13px", borderRadius: 6, background: "#2d1b4e", color: "#c084fc", fontSize: 11 }}>⏳ AI Writing...</div>
               )}
@@ -398,6 +370,8 @@ ${RESUME_CONTEXT}`;
           {toast.msg}
         </div>
       )}
+
+      <Analytics />
 
       <style>{`
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
