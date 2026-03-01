@@ -8,7 +8,7 @@ const CORRECT_PASSWORD = "vijay@outreach2024";
 // ============================================================
 // CHANGE YOUR CLAUDE API KEY HERE (from console.anthropic.com)
 // ============================================================
-const CLAUDE_API_KEY = "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";
+const CLAUDE_API_KEY = process.env.REACT_APP_CLAUDE_API_KEY;
 
 const RESUME_CONTEXT = `
 Candidate: Vijay Srinivassan S J
