@@ -441,7 +441,12 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
 
     try {
       // Step 1: Use api_search to find people (correct endpoint)
-      const data = await callApollo("mixed_people/api_search", searchParams);
+      for (const org of orgs) {
+  const data = await callApollo("mixed_people/organization_top_people", {
+    organization_id: org.id,
+  });
+  // parse data.people from each response...
+}
       console.log("[OutreachAI] api_search response:", JSON.stringify(data).substring(0, 800));
 
       const rawPeople = data.people || data.contacts || [];
