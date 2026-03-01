@@ -187,20 +187,8 @@ function OnboardingForm({ onComplete, onBack }) {
     onComplete(ctx, form);
   };
 
-  const Field = ({ label, k, required, placeholder, type }) => (
-    <div style={{ marginBottom: 14 }}>
-      <label style={theme.label}>{label}{required && " *"}</label>
-      <input type={type || "text"} value={form[k]} onChange={(e) => set(k, e.target.value)} placeholder={placeholder} required={required} style={theme.input} />
-    </div>
-  );
-
-  const TextArea = ({ label, k, placeholder, rows }) => (
-    <div style={{ marginBottom: 14 }}>
-      <label style={theme.label}>{label}</label>
-      <textarea value={form[k]} onChange={(e) => set(k, e.target.value)} placeholder={placeholder} rows={rows || 4}
-        style={{ ...theme.input, resize: "vertical", minHeight: 80, lineHeight: 1.5 }} />
-    </div>
-  );
+  const iStyle = theme.input;
+  const tStyle = { ...theme.input, resize: "vertical", minHeight: 80, lineHeight: 1.5 };
 
   return (
     <div style={{ minHeight: "100vh", background: theme.bg, fontFamily: "'Inter', -apple-system, sans-serif" }}>
@@ -223,12 +211,30 @@ function OnboardingForm({ onComplete, onBack }) {
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Basic Information</h3>
             <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 18 }}>Your personal details and contact info</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <Field label="Full Name" k="name" required placeholder="Vijay Srinivassan" />
-              <Field label="Email" k="email" required placeholder="vijay@example.com" type="email" />
-              <Field label="Phone Number" k="phone" placeholder="9653941593" />
-              <Field label="Graduation Year" k="gradYear" placeholder="2025" />
-              <Field label="Degree" k="degree" placeholder="MBA in Marketing & Operations" />
-              <Field label="College" k="college" placeholder="Dr. NGP Institute of Technology" />
+              <div>
+                <label style={theme.label}>Full Name *</label>
+                <input type="text" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Vijay Srinivassan" required style={iStyle} />
+              </div>
+              <div>
+                <label style={theme.label}>Email *</label>
+                <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="vijay@example.com" required style={iStyle} />
+              </div>
+              <div>
+                <label style={theme.label}>Phone Number</label>
+                <input type="text" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="9653941593" style={iStyle} />
+              </div>
+              <div>
+                <label style={theme.label}>Graduation Year</label>
+                <input type="text" value={form.gradYear} onChange={(e) => set("gradYear", e.target.value)} placeholder="2025" style={iStyle} />
+              </div>
+              <div>
+                <label style={theme.label}>Degree</label>
+                <input type="text" value={form.degree} onChange={(e) => set("degree", e.target.value)} placeholder="MBA in Marketing & Operations" style={iStyle} />
+              </div>
+              <div>
+                <label style={theme.label}>College</label>
+                <input type="text" value={form.college} onChange={(e) => set("college", e.target.value)} placeholder="Dr. NGP Institute of Technology" style={iStyle} />
+              </div>
             </div>
           </div>
 
@@ -236,26 +242,44 @@ function OnboardingForm({ onComplete, onBack }) {
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Job Preferences</h3>
             <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 18 }}>Help AI understand what you're looking for</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <Field label="Target Role" k="targetRole" required placeholder="Marketing Intern" />
-              <Field label="Preferred Location" k="location" placeholder="Bangalore, Remote" />
-              <Field label="Target Industry" k="industry" placeholder="SaaS, Digital Marketing, D2C" />
-              <Field label="Ideal Company Size" k="companySize" placeholder="Seed stage, 10-50 employees" />
+              <div>
+                <label style={theme.label}>Target Role *</label>
+                <input type="text" value={form.targetRole} onChange={(e) => set("targetRole", e.target.value)} placeholder="Marketing Intern" required style={iStyle} />
+              </div>
+              <div>
+                <label style={theme.label}>Preferred Location</label>
+                <input type="text" value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="Bangalore, Remote" style={iStyle} />
+              </div>
+              <div>
+                <label style={theme.label}>Target Industry</label>
+                <input type="text" value={form.industry} onChange={(e) => set("industry", e.target.value)} placeholder="SaaS, Digital Marketing, D2C" style={iStyle} />
+              </div>
+              <div>
+                <label style={theme.label}>Ideal Company Size</label>
+                <input type="text" value={form.companySize} onChange={(e) => set("companySize", e.target.value)} placeholder="Seed stage, 10-50 employees" style={iStyle} />
+              </div>
             </div>
           </div>
 
           <div style={{ ...theme.card, padding: 28, marginBottom: 20 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Experience & Skills</h3>
             <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 18 }}>Your background that AI will reference in emails</p>
-            <TextArea label="Internships & Experience" k="internships" rows={5}
-              placeholder={"1. VilFresh (May-Jun 2025) - Built N8N automation, WhatsApp bots\n2. Stead (Dec 2024-Jan 2025) - Apollo.io campaigns, SEO articles\n3. TheX.Press (Aug-Sep 2024) - 30+ blogs, business model"} />
-            <Field label="Skills" k="skills" placeholder="SEO, Apollo.io, HubSpot CRM, Google Ads, N8N, WordPress" />
+            <div style={{ marginBottom: 14 }}>
+              <label style={theme.label}>Internships & Experience</label>
+              <textarea value={form.internships} onChange={(e) => set("internships", e.target.value)} rows={5}
+                placeholder={"1. VilFresh (May-Jun 2025) - Built N8N automation, WhatsApp bots\n2. Stead (Dec 2024-Jan 2025) - Apollo.io campaigns, SEO articles\n3. TheX.Press (Aug-Sep 2024) - 30+ blogs, business model"} style={tStyle} />
+            </div>
+            <div>
+              <label style={theme.label}>Skills</label>
+              <input type="text" value={form.skills} onChange={(e) => set("skills", e.target.value)} placeholder="SEO, Apollo.io, HubSpot CRM, Google Ads, N8N, WordPress" style={iStyle} />
+            </div>
           </div>
 
           <div style={{ ...theme.card, padding: 28, marginBottom: 28 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Additional Instructions</h3>
             <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 18 }}>Anything else AI should know</p>
-            <TextArea label="" k="additional" rows={4}
-              placeholder="e.g. I'm open to working for free initially, I want to focus on performance marketing agencies in India..." />
+            <textarea value={form.additional} onChange={(e) => set("additional", e.target.value)} rows={4}
+              placeholder="e.g. I'm open to working for free initially, I want to focus on performance marketing agencies in India..." style={tStyle} />
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
