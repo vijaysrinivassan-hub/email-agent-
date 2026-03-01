@@ -277,13 +277,12 @@ function LoginScreen({ onLogin, onBack }) {
 }
 
 // ============================================================
-// ONBOARDING FORM
+// ONBOARDING FORM — NO seniority/titles here
 // ============================================================
 function OnboardingForm({ onComplete, onBack }) {
   const [form, setForm] = useState({
     name: "", email: "", phone: "", degree: "", college: "", gradYear: "",
     targetRole: "", locations: [], industries: [], companySize: [], keywords: "",
-    seniorities: ["founder", "c_suite", "owner"], personTitles: "",
     internships: "", skills: "", additional: "",
   });
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
@@ -299,8 +298,6 @@ function OnboardingForm({ onComplete, onBack }) {
       form.industries.length ? `Target Industry: ${form.industries.join(", ")}` : "",
       form.companySize.length ? `Company Size: ${form.companySize.map(v => { const r = APOLLO_EMPLOYEE_RANGES.find(x => x.value === v); return r ? r.label : v; }).join(", ")}` : "",
       form.keywords ? `Keywords: ${form.keywords}` : "",
-      form.seniorities.length ? `Target Seniority: ${form.seniorities.join(", ")}` : "",
-      form.personTitles ? `Person Titles: ${form.personTitles}` : "",
       form.internships ? `Internships & Experience:\n${form.internships}` : "",
       form.skills ? `Skills: ${form.skills}` : "",
       form.additional ? `Additional Context: ${form.additional}` : "",
@@ -349,13 +346,6 @@ function OnboardingForm({ onComplete, onBack }) {
               <label style={theme.label}>Target Keywords <span style={{ fontWeight: 400, color: "#9ca3af" }}>(comma-separated)</span></label>
               <input type="text" value={form.keywords} onChange={(e) => set("keywords", e.target.value)} placeholder="performance marketing, SEO, growth hacking, paid ads" style={iStyle} />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-              <SearchableSelect label="Person Seniority" options={APOLLO_SENIORITIES} value={form.seniorities} onChange={(v) => set("seniorities", v)} placeholder="Select seniority levels..." multi />
-              <div>
-                <label style={theme.label}>Person Titles <span style={{ fontWeight: 400, color: "#9ca3af" }}>(comma-separated)</span></label>
-                <input type="text" value={form.personTitles} onChange={(e) => set("personTitles", e.target.value)} placeholder="CEO, Founder, Marketing Head" style={iStyle} />
-              </div>
-            </div>
           </div>
           <div style={{ ...theme.card, padding: 28, marginBottom: 20 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Experience & Skills</h3>
@@ -382,7 +372,7 @@ function OnboardingForm({ onComplete, onBack }) {
 }
 
 // ============================================================
-// COMPANY SELECT
+// COMPANY SELECT — seniority dialog appears AFTER clicking Find People
 // ============================================================
 function CompanySelect({ onContinue, onBack, userProfile }) {
   const [companies, setCompanies] = useState([]);
@@ -394,6 +384,10 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
   const [step, setStep] = useState("companies");
   const [error, setError] = useState(null);
   const [manualEmail, setManualEmail] = useState({});
+  // Seniority dialog state
+  const [showSeniorityDialog, setShowSeniorityDialog] = useState(false);
+  const [selectedSeniorities, setSelectedSeniorities] = useState(new Set(["founder", "c_suite", "owner"]));
+  const [customTitles, setCustomTitles] = useState("");
 
   useEffect(() => { searchCompanies(); }, []);
 
@@ -429,12 +423,27 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
       const data = await callApollo("organizations/search", body);
       if (data.organizations && data.organizations.length > 0) {
         setCompanies(data.organizations);
-        // NO companies selected by default — user picks manually
       } else {
         setError("No companies found matching your criteria. Try broader filters.");
       }
     } catch (err) { setError("Failed to search companies: " + err.message); }
     setLoading(false);
+  };
+
+  const handleFindPeopleClick = () => {
+    if (selectedOrgs.size === 0) return;
+    setShowSeniorityDialog(true);
+  };
+
+  const handleSeniorityConfirm = () => {
+    setShowSeniorityDialog(false);
+    fetchPeople();
+  };
+
+  const toggleSeniority = (val) => {
+    const n = new Set(selectedSeniorities);
+    if (n.has(val)) n.delete(val); else n.add(val);
+    setSelectedSeniorities(n);
   };
 
   const fetchPeople = async () => {
@@ -453,11 +462,11 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
     } else {
       searchBody.organization_ids = orgs.map(o => o.id);
     }
-    if (userProfile?.seniorities?.length) {
-      searchBody.person_seniorities = userProfile.seniorities;
+    if (selectedSeniorities.size > 0) {
+      searchBody.person_seniorities = Array.from(selectedSeniorities);
     }
-    if (userProfile?.personTitles) {
-      searchBody.person_titles = userProfile.personTitles.split(",").map(s => s.trim()).filter(Boolean);
+    if (customTitles.trim()) {
+      searchBody.person_titles = customTitles.split(",").map(s => s.trim()).filter(Boolean);
     }
 
     console.log("[OutreachAI] People search body:", JSON.stringify(searchBody));
@@ -515,15 +524,8 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
 
   const handleContinue = () => {
     const contacts = people.filter(p => selectedPeople.has(p.id)).map((p, i) => ({
-      id: Date.now() + i,
-      founder: p.name,
-      firstName: p.firstName,
-      title: p.title,
-      company: p.company,
-      email: p.email || manualEmail[p.id] || "",
-      subject: "",
-      body: "",
-      status: "pending",
+      id: Date.now() + i, founder: p.name, firstName: p.firstName, title: p.title, company: p.company,
+      email: p.email || manualEmail[p.id] || "", subject: "", body: "", status: "pending",
     }));
     if (contacts.length === 0) { setError("Select at least one person with an email."); return; }
     onContinue(contacts);
@@ -595,7 +597,7 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 13, color: "#6b7280" }}>{selectedOrgs.size} of {companies.length} selected</span>
-              <button onClick={fetchPeople} disabled={selectedOrgs.size === 0 || loadingPeople}
+              <button onClick={handleFindPeopleClick} disabled={selectedOrgs.size === 0 || loadingPeople}
                 style={{ ...theme.btnPrimary, opacity: selectedOrgs.size === 0 ? 0.5 : 1 }}>
                 {loadingPeople ? "\u23F3 Finding people..." : `Find People at ${selectedOrgs.size} Companies \u2192`}
               </button>
@@ -638,8 +640,7 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#dc2626", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>&#128274; No Email — Add Manually ({withoutEmail.length})</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
                   {withoutEmail.map((p) => (
-                    <div key={p.id}
-                      style={{ ...theme.card, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, borderColor: "#f3f4f6", background: "#fafafa" }}>
+                    <div key={p.id} style={{ ...theme.card, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, borderColor: "#f3f4f6", background: "#fafafa" }}>
                       <div style={{ width: 22, height: 22, borderRadius: 6, border: "2px solid #e5e7eb", background: "#f3f4f6", flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 700, color: "#6b7280", fontSize: 14 }}>{p.name}</div>
@@ -663,6 +664,46 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
           </>
         )}
       </main>
+
+      {/* ====== SENIORITY / JOB TITLE DIALOG ====== */}
+      {showSeniorityDialog && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div style={{ ...theme.card, width: "100%", maxWidth: 520, padding: 32 }}>
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: "#111827", marginBottom: 4 }}>&#128100; Who do you want to find?</h3>
+            <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 20 }}>Select job seniority levels and optionally add specific titles</p>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ ...theme.label, marginBottom: 10 }}>Seniority Level</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {APOLLO_SENIORITIES.map((s) => {
+                  const sel = selectedSeniorities.has(s.value);
+                  return (
+                    <div key={s.value} onClick={() => toggleSeniority(s.value)}
+                      style={{ padding: "10px 14px", borderRadius: 8, border: sel ? "2px solid #2563eb" : "1px solid #e5e7eb", background: sel ? "#eff6ff" : "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, transition: "all 0.15s" }}>
+                      <div style={{ width: 18, height: 18, borderRadius: 4, border: sel ? "none" : "1.5px solid #d1d5db", background: sel ? "#2563eb" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10, flexShrink: 0 }}>{sel && "\u2713"}</div>
+                      <span style={{ fontSize: 13, fontWeight: sel ? 600 : 400, color: sel ? "#1e40af" : "#374151" }}>{s.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={theme.label}>Specific Job Titles <span style={{ fontWeight: 400, color: "#9ca3af" }}>(optional, comma-separated)</span></label>
+              <input type="text" value={customTitles} onChange={(e) => setCustomTitles(e.target.value)} placeholder="CEO, Marketing Head, Growth Lead"
+                style={theme.input} />
+            </div>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setShowSeniorityDialog(false)} style={{ ...theme.btnOutline, flex: 1 }}>Cancel</button>
+              <button onClick={handleSeniorityConfirm} disabled={selectedSeniorities.size === 0 && !customTitles.trim()}
+                style={{ ...theme.btnPrimary, flex: 2, opacity: (selectedSeniorities.size === 0 && !customTitles.trim()) ? 0.5 : 1 }}>
+                &#128269; Search for People
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -834,7 +875,7 @@ ${resumeContext}`;
 }
 
 // ============================================================
-// MAIN APP — persists screen state so page reload doesn't go to homepage
+// MAIN APP — persists screen state so page reload stays
 // ============================================================
 export default function App() {
   const [screen, setScreen] = useState(() => {
