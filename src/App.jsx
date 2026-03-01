@@ -441,15 +441,54 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
   };
 
   const fetchPeople = async () => {
-    setLoadingPeople(true);
-    setError(null);
-    const orgs = companies.filter(c => selectedOrgs.has(c.id));
-    const allPeople = [];
+  setLoadingPeople(true);
+  setError(null);
+  const orgs = companies.filter(c => selectedOrgs.has(c.id));
+  const allPeople = [];
+
+  // Collect domains from selected companies
+  const domains = orgs.map(o => o.primary_domain).filter(Boolean);
+  const orgNameMap = {};
+  orgs.forEach(o => { if (o.primary_domain) orgNameMap[o.primary_domain] = o.name; });
+
+  try {
+    // Use the NEW api_search endpoint (the old one was deprecated)
+    const data = await callApollo("mixed_people/api_search", {
+      q_organization_domains_list: domains,
+      person_seniorities: ["founder", "c_suite", "owner", "vp", "director"],
+      page: 1,
+      per_page: 50,
+    });
+    if (data.people && data.people.length > 0) {
+      data.people.forEach(p => {
+        const orgName = p.organization?.name
+          || orgNameMap[p.organization?.primary_domain]
+          || "Unknown";
+        allPeople.push({
+          id: p.id,
+          name: p.name || (p.first_name + " " + (p.last_name || "")).trim(),
+          firstName: p.first_name,
+          title: p.title || "Unknown Role",
+          company: orgName,
+          companyDomain: p.organization?.primary_domain,
+          email: p.email || null,
+          orgId: p.organization_id,
+        });
+      });
+    }
+  } catch (err) {
+    console.error("People search failed:", err);
+    // Fallback: try one company at a time by organization_id
     for (const org of orgs) {
       try {
-        const data = await callApollo("mixed_people/organization_top_people", { organization_id: org.id });
+        const data = await callApollo("mixed_people/api_search", {
+          organization_ids: [org.id],
+          person_seniorities: ["founder", "c_suite", "owner"],
+          page: 1,
+          per_page: 5,
+        });
         if (data.people) {
-          data.people.slice(0, 5).forEach(p => {
+          data.people.forEach(p => {
             allPeople.push({
               id: p.id,
               name: p.name || (p.first_name + " " + (p.last_name || "")).trim(),
@@ -462,18 +501,20 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
             });
           });
         }
-      } catch (err) { console.error("Failed for " + org.name, err); }
+      } catch (e) { console.error("Failed for " + org.name, e); }
     }
-    if (allPeople.length === 0) {
-      setError("No people found at these companies. Try selecting different ones.");
-      setLoadingPeople(false);
-      return;
-    }
-    setPeople(allPeople);
-    setSelectedPeople(new Set(allPeople.filter(p => p.email).map(p => p.id)));
-    setStep("people");
+  }
+
+  if (allPeople.length === 0) {
+    setError("No senior people found at these companies. Try selecting different or larger companies.");
     setLoadingPeople(false);
-  };
+    return;
+  }
+  setPeople(allPeople);
+  setSelectedPeople(new Set(allPeople.filter(p => p.email).map(p => p.id)));
+  setStep("people");
+  setLoadingPeople(false);
+};
 
   const toggleOrg = (id) => { const n = new Set(selectedOrgs); if (n.has(id)) n.delete(id); else n.add(id); setSelectedOrgs(n); };
   const togglePerson = (id) => {
