@@ -121,42 +121,28 @@ const statusConfig = {
   drafting: { bg: "#f3e8ff", text: "#9333ea", label: "AI Drafting..." },
 };
 
-// ============================================================
-// SEARCHABLE MULTI-SELECT DROPDOWN
-// ============================================================
 function SearchableSelect({ label, options, value, onChange, placeholder, multi = false }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef(null);
-
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
-
   const filtered = options.filter((o) => {
     const optLabel = typeof o === "string" ? o : o.label;
     return optLabel.toLowerCase().includes(search.toLowerCase());
   });
-
   const isSelected = (opt) => {
     const v = typeof opt === "string" ? opt : opt.value;
     return multi ? (value || []).includes(v) : value === v;
   };
-
   const handleSelect = (opt) => {
     const v = typeof opt === "string" ? opt : opt.value;
-    if (multi) {
-      const arr = value || [];
-      onChange(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
-    } else {
-      onChange(v);
-      setOpen(false);
-      setSearch("");
-    }
+    if (multi) { const arr = value || []; onChange(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]); }
+    else { onChange(v); setOpen(false); setSearch(""); }
   };
-
   const displayValue = () => {
     if (multi) {
       const arr = value || [];
@@ -168,20 +154,17 @@ function SearchableSelect({ label, options, value, onChange, placeholder, multi 
     const o = options.find((x) => (typeof x === "string" ? x : x.value) === value);
     return o ? (typeof o === "string" ? o : o.label) : value;
   };
-
   return (
     <div ref={ref} style={{ position: "relative" }}>
       {label && <label style={theme.label}>{label}</label>}
-      <div onClick={() => setOpen(!open)}
-        style={{ ...theme.input, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", color: (multi ? (value || []).length : value) ? "#111827" : "#9ca3af", minHeight: 38 }}>
+      <div onClick={() => setOpen(!open)} style={{ ...theme.input, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", color: (multi ? (value || []).length : value) ? "#111827" : "#9ca3af", minHeight: 38 }}>
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{displayValue()}</span>
         <span style={{ fontSize: 10, marginLeft: 8 }}>{open ? "\u25B2" : "\u25BC"}</span>
       </div>
       {open && (
         <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50, background: "#fff", border: "1px solid #d1d5db", borderRadius: 8, marginTop: 4, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", maxHeight: 240, display: "flex", flexDirection: "column" }}>
           <div style={{ padding: 8, borderBottom: "1px solid #f3f4f6" }}>
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." autoFocus
-              style={{ ...theme.input, padding: "6px 10px", fontSize: 13 }} />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." autoFocus style={{ ...theme.input, padding: "6px 10px", fontSize: 13 }} />
           </div>
           <div style={{ overflowY: "auto", flex: 1 }}>
             {filtered.length === 0 && <div style={{ padding: "12px 14px", fontSize: 13, color: "#9ca3af" }}>No results found</div>}
@@ -211,9 +194,6 @@ function SearchableSelect({ label, options, value, onChange, placeholder, multi 
   );
 }
 
-// ============================================================
-// LANDING PAGE
-// ============================================================
 function LandingPage({ onStart }) {
   return (
     <div style={{ minHeight: "100vh", background: theme.bg, fontFamily: "'Inter', -apple-system, sans-serif" }}>
@@ -246,14 +226,11 @@ function LandingPage({ onStart }) {
           ))}
         </div>
       </main>
-      <footer style={{ borderTop: "1px solid #e5e7eb", padding: "24px", marginTop: 80, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>&copy; 2026 OutreachAI. Helping job seekers connect with founders.</footer>
+      <footer style={{ borderTop: "1px solid #e5e7eb", padding: "24px", marginTop: 80, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>&copy; 2026 OutreachAI.</footer>
     </div>
   );
 }
 
-// ============================================================
-// LOGIN SCREEN
-// ============================================================
 function LoginScreen({ onLogin, onBack }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
@@ -276,9 +253,6 @@ function LoginScreen({ onLogin, onBack }) {
   );
 }
 
-// ============================================================
-// ONBOARDING FORM — NO seniority/titles here
-// ============================================================
 function OnboardingForm({ onComplete, onBack }) {
   const [form, setForm] = useState({
     name: "", email: "", phone: "", degree: "", college: "", gradYear: "",
@@ -319,7 +293,7 @@ function OnboardingForm({ onComplete, onBack }) {
       </header>
       <main style={{ maxWidth: 720, margin: "0 auto", padding: "40px 24px" }}>
         <h1 style={{ fontSize: 32, fontWeight: 800, color: "#111827", marginBottom: 8 }}>Set Up Your Profile</h1>
-        <p style={{ color: "#6b7280", marginBottom: 32, fontSize: 15 }}>Tell us about yourself. All Apollo filters below map directly to the API.</p>
+        <p style={{ color: "#6b7280", marginBottom: 32, fontSize: 15 }}>Tell us about yourself and your target companies.</p>
         <form onSubmit={handleSubmit}>
           <div style={{ ...theme.card, padding: 28, marginBottom: 20 }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Basic Information</h3>
@@ -334,8 +308,8 @@ function OnboardingForm({ onComplete, onBack }) {
             </div>
           </div>
           <div style={{ ...theme.card, padding: 28, marginBottom: 20 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 4 }}>&#127919; Apollo ICP Filters</h3>
-            <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 18 }}>These map directly to Apollo API. Only exact Apollo values are used.</p>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 4 }}>&#127919; Company Filters</h3>
+            <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 18 }}>These map directly to Apollo API for company search.</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div><label style={theme.label}>Target Role *</label><input type="text" value={form.targetRole} onChange={(e) => set("targetRole", e.target.value)} placeholder="Marketing Intern" required style={iStyle} /></div>
               <SearchableSelect label="Account Location(s)" options={APOLLO_LOCATIONS} value={form.locations} onChange={(v) => set("locations", v)} placeholder="Select locations..." multi />
@@ -344,7 +318,7 @@ function OnboardingForm({ onComplete, onBack }) {
             </div>
             <div style={{ marginTop: 12 }}>
               <label style={theme.label}>Target Keywords <span style={{ fontWeight: 400, color: "#9ca3af" }}>(comma-separated)</span></label>
-              <input type="text" value={form.keywords} onChange={(e) => set("keywords", e.target.value)} placeholder="performance marketing, SEO, growth hacking, paid ads" style={iStyle} />
+              <input type="text" value={form.keywords} onChange={(e) => set("keywords", e.target.value)} placeholder="performance marketing, SEO, growth hacking" style={iStyle} />
             </div>
           </div>
           <div style={{ ...theme.card, padding: 28, marginBottom: 20 }}>
@@ -372,7 +346,7 @@ function OnboardingForm({ onComplete, onBack }) {
 }
 
 // ============================================================
-// COMPANY SELECT — seniority dialog appears AFTER clicking Find People
+// COMPANY SELECT with seniority dialog + correct API endpoint
 // ============================================================
 function CompanySelect({ onContinue, onBack, userProfile }) {
   const [companies, setCompanies] = useState([]);
@@ -384,7 +358,6 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
   const [step, setStep] = useState("companies");
   const [error, setError] = useState(null);
   const [manualEmail, setManualEmail] = useState({});
-  // Seniority dialog state
   const [showSeniorityDialog, setShowSeniorityDialog] = useState(false);
   const [selectedSeniorities, setSelectedSeniorities] = useState(new Set(["founder", "c_suite", "owner"]));
   const [customTitles, setCustomTitles] = useState("");
@@ -413,18 +386,14 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
       if (userProfile?.locations?.length) body.organization_locations = userProfile.locations;
       if (userProfile?.companySize?.length) body.organization_num_employees_ranges = userProfile.companySize;
       const keywordTags = [];
-      if (userProfile?.industries?.length) {
-        userProfile.industries.forEach(ind => keywordTags.push(ind.toLowerCase()));
-      }
-      if (userProfile?.keywords) {
-        userProfile.keywords.split(",").map(s => s.trim()).filter(Boolean).forEach(k => keywordTags.push(k));
-      }
+      if (userProfile?.industries?.length) userProfile.industries.forEach(ind => keywordTags.push(ind.toLowerCase()));
+      if (userProfile?.keywords) userProfile.keywords.split(",").map(s => s.trim()).filter(Boolean).forEach(k => keywordTags.push(k));
       if (keywordTags.length) body.q_organization_keyword_tags = keywordTags;
       const data = await callApollo("organizations/search", body);
       if (data.organizations && data.organizations.length > 0) {
         setCompanies(data.organizations);
       } else {
-        setError("No companies found matching your criteria. Try broader filters.");
+        setError("No companies found. Try broader filters.");
       }
     } catch (err) { setError("Failed to search companies: " + err.message); }
     setLoading(false);
@@ -435,15 +404,15 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
     setShowSeniorityDialog(true);
   };
 
-  const handleSeniorityConfirm = () => {
-    setShowSeniorityDialog(false);
-    fetchPeople();
-  };
-
   const toggleSeniority = (val) => {
     const n = new Set(selectedSeniorities);
     if (n.has(val)) n.delete(val); else n.add(val);
     setSelectedSeniorities(n);
+  };
+
+  const handleSeniorityConfirm = () => {
+    setShowSeniorityDialog(false);
+    fetchPeople();
   };
 
   const fetchPeople = async () => {
@@ -456,55 +425,70 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
     const orgNameMap = {};
     orgs.forEach(o => { if (o.primary_domain) orgNameMap[o.primary_domain] = o.name; });
 
-    const searchBody = { page: 1, per_page: 50 };
+    // Build search params for api_search (query params style)
+    const searchParams = { page: 1, per_page: 25 };
     if (domains.length > 0) {
-      searchBody.q_organization_domains_list = domains;
-    } else {
-      searchBody.organization_ids = orgs.map(o => o.id);
+      searchParams.q_organization_domains = domains;
     }
     if (selectedSeniorities.size > 0) {
-      searchBody.person_seniorities = Array.from(selectedSeniorities);
+      searchParams.person_seniorities = Array.from(selectedSeniorities);
     }
     if (customTitles.trim()) {
-      searchBody.person_titles = customTitles.split(",").map(s => s.trim()).filter(Boolean);
+      searchParams.person_titles = customTitles.split(",").map(s => s.trim()).filter(Boolean);
     }
 
-    console.log("[OutreachAI] People search body:", JSON.stringify(searchBody));
+    console.log("[OutreachAI] People search params:", JSON.stringify(searchParams));
 
-    const endpoints = ["mixed_people/search", "people/search"];
-    let success = false;
+    try {
+      // Step 1: Use api_search to find people (correct endpoint)
+      const data = await callApollo("mixed_people/api_search", searchParams);
+      console.log("[OutreachAI] api_search response:", JSON.stringify(data).substring(0, 800));
 
-    for (const ep of endpoints) {
-      if (success) break;
-      try {
-        console.log("[OutreachAI] Trying endpoint:", ep);
-        const data = await callApollo(ep, searchBody);
-        console.log("[OutreachAI] Response from " + ep + ":", JSON.stringify(data).substring(0, 500));
-        if (data.people && data.people.length > 0) {
-          data.people.forEach(p => {
-            const orgName = p.organization?.name || orgNameMap[p.organization?.primary_domain] || p.organization_name || "Unknown";
-            allPeople.push({
-              id: p.id,
-              name: p.name || ((p.first_name || "") + " " + (p.last_name || "")).trim(),
-              firstName: p.first_name,
-              title: p.title || "Unknown Role",
-              company: orgName,
-              companyDomain: p.organization?.primary_domain || "",
-              email: p.email || null,
-              orgId: p.organization_id,
+      const rawPeople = data.people || data.contacts || [];
+
+      if (rawPeople.length > 0) {
+        // Step 2: Try to enrich with bulk_match for emails
+        const personIds = rawPeople.map(p => p.id).filter(Boolean).slice(0, 10);
+        let enrichedMap = {};
+
+        if (personIds.length > 0) {
+          try {
+            const enrichData = await callApollo("people/bulk_match", {
+              details: personIds.map(id => ({ id })),
             });
-          });
-          success = true;
-        } else if (data.error) {
-          console.warn("[OutreachAI] " + ep + " returned error:", data.error);
+            console.log("[OutreachAI] bulk_match response:", JSON.stringify(enrichData).substring(0, 800));
+            if (enrichData.matches) {
+              enrichData.matches.forEach(m => { if (m) enrichedMap[m.id] = m; });
+            }
+          } catch (enrichErr) {
+            console.warn("[OutreachAI] bulk_match failed (using partial data):", enrichErr.message);
+          }
         }
-      } catch (err) {
-        console.warn("[OutreachAI] " + ep + " failed:", err.message);
+
+        rawPeople.forEach(p => {
+          const enriched = enrichedMap[p.id] || {};
+          const orgName = p.organization?.name || enriched.organization?.name || orgNameMap[p.organization?.primary_domain] || "Unknown";
+          allPeople.push({
+            id: p.id,
+            name: p.name || enriched.name || ((p.first_name || "") + " " + (p.last_name || "")).trim(),
+            firstName: p.first_name || enriched.first_name,
+            title: p.title || enriched.title || "Unknown Role",
+            company: orgName,
+            companyDomain: p.organization?.primary_domain || enriched.organization?.primary_domain || "",
+            email: enriched.email || p.email || null,
+            orgId: p.organization_id,
+          });
+        });
       }
+    } catch (err) {
+      console.error("[OutreachAI] api_search failed:", err.message);
+      setError("People search failed: " + err.message + " — Check Console (F12) for details.");
+      setLoadingPeople(false);
+      return;
     }
 
     if (allPeople.length === 0) {
-      setError("No people found. Check browser Console (F12) for details. Try broader seniority filters or different companies.");
+      setError("No people found for these companies and filters. Try selecting different seniority levels or more companies.");
       setLoadingPeople(false);
       return;
     }
@@ -533,9 +517,7 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
 
   const handleManualEmail = (personId, email) => {
     setManualEmail(prev => ({ ...prev, [personId]: email }));
-    if (email && email.includes("@")) {
-      setSelectedPeople(prev => new Set([...prev, personId]));
-    }
+    if (email && email.includes("@")) setSelectedPeople(prev => new Set([...prev, personId]));
   };
 
   const withEmail = people.filter(p => p.email || manualEmail[p.id]);
@@ -560,9 +542,6 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "60vh", gap: 16 }}>
           <div style={{ fontSize: 48 }}>&#128269;</div>
           <div style={{ fontSize: 16, fontWeight: 600, color: "#111827" }}>Searching Apollo for companies...</div>
-          <div style={{ fontSize: 13, color: "#9ca3af" }}>
-            {userProfile?.industries?.length ? userProfile.industries.join(", ") : "companies"} in {userProfile?.locations?.length ? userProfile.locations.join(", ") : "your area"}
-          </div>
         </div>
       </div>
     );
@@ -577,7 +556,7 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
               <div>
                 <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", marginBottom: 6 }}>Select Target Companies</h1>
-                <p style={{ color: "#6b7280", fontSize: 14 }}>Apollo found {companies.length} companies. Select which ones you want to target.</p>
+                <p style={{ color: "#6b7280", fontSize: 14 }}>Apollo found {companies.length} companies. Select which ones to target.</p>
               </div>
               <button onClick={searchCompanies} style={{ ...theme.btnOutline, padding: "8px 14px", fontSize: 12 }}>&#128260; Re-search</button>
             </div>
@@ -589,7 +568,7 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
                   <div style={{ width: 22, height: 22, borderRadius: 6, border: selectedOrgs.has(c.id) ? "none" : "2px solid #d1d5db", background: selectedOrgs.has(c.id) ? theme.gradient : "#fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{selectedOrgs.has(c.id) && "\u2713"}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, color: "#111827", fontSize: 14 }}>{c.name}</div>
-                    <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{c.industry || "Unknown industry"} &middot; {c.estimated_num_employees ? `~${c.estimated_num_employees} employees` : "Size unknown"}{c.city ? ` \u00B7 ${c.city}${c.state ? ", " + c.state : ""}` : ""}</div>
+                    <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{c.industry || "Unknown"} &middot; {c.estimated_num_employees ? `~${c.estimated_num_employees} employees` : "Size unknown"}{c.city ? ` \u00B7 ${c.city}${c.state ? ", " + c.state : ""}` : ""}</div>
                   </div>
                   {c.primary_domain && <div style={{ fontSize: 11, color: "#9ca3af" }}>{c.primary_domain}</div>}
                 </div>
@@ -612,17 +591,16 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
               Found {people.length} people &middot; <span style={{ color: "#16a34a", fontWeight: 600 }}>{withEmail.length} with email</span> &middot; <span style={{ color: "#dc2626" }}>{withoutEmail.length} without email</span>
             </p>
             <div style={{ ...theme.card, padding: "10px 14px", marginBottom: 20, background: "#eff6ff", borderColor: "#bfdbfe", fontSize: 12, color: "#1e40af", lineHeight: 1.5 }}>
-              &#128161; <strong>Free plan:</strong> Apollo shows names & titles for free. Some emails are already available. For people without emails, you can type their email manually (find it on LinkedIn or their website).
+              &#128161; <strong>Tip:</strong> People without emails can have their email typed manually — find it on LinkedIn or their company website.
             </div>
             {error && <div style={{ ...theme.card, padding: 16, marginBottom: 16, borderColor: "#fecaca", background: "#fef2f2", color: "#dc2626", fontSize: 13 }}>{error}</div>}
-
             {withEmail.length > 0 && (
               <>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>&#9993;&#65039; Email Available ({withEmail.length})</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
                   {withEmail.map((p) => (
                     <div key={p.id} onClick={() => togglePerson(p.id)}
-                      style={{ ...theme.card, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", borderColor: selectedPeople.has(p.id) ? "#2563eb" : "#e5e7eb", background: selectedPeople.has(p.id) ? "#eff6ff" : "#fff", transition: "all 0.15s" }}>
+                      style={{ ...theme.card, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", borderColor: selectedPeople.has(p.id) ? "#2563eb" : "#e5e7eb", background: selectedPeople.has(p.id) ? "#eff6ff" : "#fff" }}>
                       <div style={{ width: 22, height: 22, borderRadius: 6, border: selectedPeople.has(p.id) ? "none" : "2px solid #d1d5db", background: selectedPeople.has(p.id) ? theme.gradient : "#fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{selectedPeople.has(p.id) && "\u2713"}</div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 700, color: "#111827", fontSize: 14 }}>{p.name}</div>
@@ -634,7 +612,6 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
                 </div>
               </>
             )}
-
             {withoutEmail.length > 0 && (
               <>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#dc2626", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>&#128274; No Email — Add Manually ({withoutEmail.length})</div>
@@ -646,16 +623,15 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
                         <div style={{ fontWeight: 700, color: "#6b7280", fontSize: 14 }}>{p.name}</div>
                         <div style={{ fontSize: 12, color: "#9ca3af" }}>{p.title} at {p.company}</div>
                       </div>
-                      <input type="email" value={manualEmail[p.id] || ""} onChange={(e) => handleManualEmail(p.id, e.target.value)} onClick={(e) => e.stopPropagation()} placeholder="Type email to unlock"
+                      <input type="email" value={manualEmail[p.id] || ""} onChange={(e) => handleManualEmail(p.id, e.target.value)} onClick={(e) => e.stopPropagation()} placeholder="Type email"
                         style={{ ...theme.input, width: 200, padding: "5px 10px", fontSize: 11, borderColor: manualEmail[p.id]?.includes("@") ? "#16a34a" : "#d1d5db" }} />
                     </div>
                   ))}
                 </div>
               </>
             )}
-
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 13, color: "#6b7280" }}>{selectedPeople.size} people selected for outreach</span>
+              <span style={{ fontSize: 13, color: "#6b7280" }}>{selectedPeople.size} people selected</span>
               <button onClick={handleContinue} disabled={selectedPeople.size === 0}
                 style={{ ...theme.btnPrimary, opacity: selectedPeople.size === 0 ? 0.5 : 1 }}>
                 Draft Emails for {selectedPeople.size} People &rarr;
@@ -665,13 +641,11 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
         )}
       </main>
 
-      {/* ====== SENIORITY / JOB TITLE DIALOG ====== */}
       {showSeniorityDialog && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           <div style={{ ...theme.card, width: "100%", maxWidth: 520, padding: 32 }}>
             <h3 style={{ fontSize: 20, fontWeight: 800, color: "#111827", marginBottom: 4 }}>&#128100; Who do you want to find?</h3>
-            <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 20 }}>Select job seniority levels and optionally add specific titles</p>
-
+            <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 20 }}>Select seniority levels and optionally add specific titles</p>
             <div style={{ marginBottom: 20 }}>
               <label style={{ ...theme.label, marginBottom: 10 }}>Seniority Level</label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -687,13 +661,10 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
                 })}
               </div>
             </div>
-
             <div style={{ marginBottom: 24 }}>
               <label style={theme.label}>Specific Job Titles <span style={{ fontWeight: 400, color: "#9ca3af" }}>(optional, comma-separated)</span></label>
-              <input type="text" value={customTitles} onChange={(e) => setCustomTitles(e.target.value)} placeholder="CEO, Marketing Head, Growth Lead"
-                style={theme.input} />
+              <input type="text" value={customTitles} onChange={(e) => setCustomTitles(e.target.value)} placeholder="CEO, Founder, Marketing Head" style={theme.input} />
             </div>
-
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => setShowSeniorityDialog(false)} style={{ ...theme.btnOutline, flex: 1 }}>Cancel</button>
               <button onClick={handleSeniorityConfirm} disabled={selectedSeniorities.size === 0 && !customTitles.trim()}
@@ -708,9 +679,6 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
   );
 }
 
-// ============================================================
-// EMAIL DASHBOARD
-// ============================================================
 function EmailDashboard({ resumeContext, userProfile, initialContacts, onLogout }) {
   const [emailList, setEmailList] = useState(initialContacts || []);
   const [selected, setSelected] = useState(0);
@@ -821,7 +789,7 @@ ${resumeContext}`;
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               {current.status !== "sent" && current.status !== "drafting" && (
                 <>
-                  <input value={aiInstructions} onChange={(e) => setAiInstructions(e.target.value)} placeholder="Custom instructions for AI..." style={{ ...theme.input, width: 220, padding: "6px 10px", fontSize: 11 }} />
+                  <input value={aiInstructions} onChange={(e) => setAiInstructions(e.target.value)} placeholder="Custom instructions..." style={{ ...theme.input, width: 200, padding: "6px 10px", fontSize: 11 }} />
                   <button onClick={() => draftWithAI(current)} style={{ ...theme.btnPrimary, padding: "6px 14px", fontSize: 11, whiteSpace: "nowrap" }}>&#129302; Draft</button>
                 </>
               )}
@@ -845,7 +813,7 @@ ${resumeContext}`;
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
             {current.status === "drafting" ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 16 }}><div style={{ fontSize: 40 }}>&#129302;</div><div style={{ fontSize: 14, color: "#9333ea", fontWeight: 600 }}>Claude is writing your email for {current.company}...</div></div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 16 }}><div style={{ fontSize: 40 }}>&#129302;</div><div style={{ fontSize: 14, color: "#9333ea", fontWeight: 600 }}>Claude is writing your email...</div></div>
             ) : editing ? (
               <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} style={{ ...theme.input, width: "100%", minHeight: 340, resize: "vertical", lineHeight: 1.8, fontSize: 13.5 }} />
             ) : (
@@ -874,9 +842,6 @@ ${resumeContext}`;
   );
 }
 
-// ============================================================
-// MAIN APP — persists screen state so page reload stays
-// ============================================================
 export default function App() {
   const [screen, setScreen] = useState(() => {
     try { return sessionStorage.getItem("outreach_screen") || "landing"; } catch { return "landing"; }
