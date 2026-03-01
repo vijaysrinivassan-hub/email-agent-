@@ -1,5 +1,84 @@
 import { useState } from "react";
 
+const CORRECT_PASSWORD = "vijay@outreach2024";
+
+function LoginScreen({ onLogin }) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(false);
+  const [shake, setShake] = useState(false);
+
+  const handleLogin = () => {
+    if (password === CORRECT_PASSWORD) {
+      onLogin();
+    } else {
+      setError(true);
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+    }
+  };
+
+  return (
+    <div style={{
+      background: "#0a0f1e", minHeight: "100vh", display: "flex",
+      alignItems: "center", justifyContent: "center", fontFamily: "'Georgia', serif",
+    }}>
+      <div style={{
+        background: "#0d1424", border: "1px solid #1e293b", borderRadius: 16,
+        padding: "48px 40px", width: 380, textAlign: "center",
+        animation: shake ? "shake 0.4s ease" : "none",
+      }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: 12, margin: "0 auto 20px",
+          background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24,
+        }}>✉</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: "#e2e8f0", marginBottom: 6 }}>
+          Vijay's Email Agent
+        </div>
+        <div style={{ fontSize: 12, color: "#475569", marginBottom: 32 }}>
+          Private access only
+        </div>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => { setPassword(e.target.value); setError(false); }}
+          onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+          placeholder="Enter password"
+          style={{
+            width: "100%", background: "#111827",
+            border: error ? "1px solid #ef4444" : "1px solid #1e293b",
+            borderRadius: 8, padding: "12px 16px", color: "#e2e8f0",
+            fontSize: 14, outline: "none", boxSizing: "border-box",
+            marginBottom: error ? 8 : 16, textAlign: "center", letterSpacing: "0.1em",
+          }}
+        />
+        {error && (
+          <div style={{ fontSize: 12, color: "#ef4444", marginBottom: 16 }}>
+            Incorrect password. Try again.
+          </div>
+        )}
+        <button onClick={handleLogin} style={{
+          width: "100%", padding: "12px", borderRadius: 8, border: "none",
+          background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+          color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer",
+        }}>
+          Login
+        </button>
+      </div>
+      <style>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          20% { transform: translateX(-8px); }
+          40% { transform: translateX(8px); }
+          60% { transform: translateX(-6px); }
+          80% { transform: translateX(6px); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+
 const emails = [
   {
     id: 1,
@@ -135,7 +214,7 @@ const statusColors = {
   rejected: { bg: "#2d1515", text: "#f87171", label: "Rejected" },
 };
 
-export default function EmailAgent() {
+function EmailAgent({ onLogout }) {
   const [emailList, setEmailList] = useState(emails);
   const [selected, setSelected] = useState(0);
   const [editing, setEditing] = useState(false);
@@ -202,41 +281,6 @@ export default function EmailAgent() {
     showToast(`Email sent to ${emailObj.founder} via Apollo ✓`);
   };
 
-  const [showExport, setShowExport] = useState(false);
-
-  const exportToCSV = () => {
-    const approved = emailList.filter((e) => e.status === "approved" || e.status === "sent");
-    if (approved.length === 0) {
-      showToast("No approved emails to export", "error");
-      return;
-    }
-    const escape = (str) => `"${(str || "").replace(/"/g, '""')}"`;
-    const headers = ["Name","Email","Company","Title","Email1_Subject","Email1_Body","Email2_Body","Status","Date_Sent","FollowUp_Date","FollowUp_Status"];
-    const rows = approved.map((e) => [
-      escape(e.founder),
-      escape(e.email),
-      escape(e.company),
-      escape(e.title),
-      escape(e.subject),
-      escape(e.body),
-      escape(`Hi ${e.firstName},\n\nJust following up on my previous email. I understand you must be really busy, but I genuinely believe I can add value to ${e.company}.\n\nI am still very much interested and willing to start for free. Would love just 10 minutes of your time.\n\nThank You,\nVijay Srinivassan S J\n9653941593`),
-      escape("Approved"),
-      escape(""),
-      escape(""),
-      escape("Pending"),
-    ].join(","));
-    const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "outreach_contacts.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast(`Exported ${approved.length} contacts to CSV ✓`);
-    setShowExport(true);
-  };
-
   const approvedCount = emailList.filter((e) => e.status === "approved").length;
   const sentCount = emailList.filter((e) => e.status === "sent").length;
   const pendingCount = emailList.filter((e) => e.status === "pending").length;
@@ -284,15 +328,12 @@ export default function EmailAgent() {
               <div style={{ fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.label}</div>
             </div>
           ))}
-          <button
-            onClick={exportToCSV}
-            style={{
-              padding: "9px 18px", borderRadius: 7, border: "none", cursor: "pointer",
-              background: "linear-gradient(135deg, #059669, #0d9488)",
-              color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: "0.03em",
-              boxShadow: "0 2px 12px rgba(5,150,105,0.35)",
-            }}>
-            ⬇ Export to Sheet
+          <button onClick={onLogout} style={{
+            padding: "7px 14px", borderRadius: 6, border: "1px solid #334155",
+            background: "transparent", color: "#64748b", fontSize: 11, cursor: "pointer",
+            marginLeft: 8,
+          }}>
+            ⎋ Logout
           </button>
         </div>
       </div>
@@ -526,47 +567,6 @@ export default function EmailAgent() {
         </div>
       </div>
 
-      {/* Export Instructions Modal */}
-      {showExport && (
-        <div style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200,
-          display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
-        }}>
-          <div style={{
-            background: "#0d1424", border: "1px solid #334155", borderRadius: 12,
-            width: "100%", maxWidth: 500, padding: 32,
-          }}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>✅ CSV Downloaded!</div>
-            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 24 }}>Now paste it into your Google Sheet and run the script.</div>
-            {[
-              { n: "1", t: "Open your Google Sheet", d: "docs.google.com/spreadsheets — open your Outreach sheet" },
-              { n: "2", t: "Click cell A2", d: "The first empty row below the headers" },
-              { n: "3", t: "Open the CSV file", d: "Open outreach_contacts.csv in Excel or Google Sheets, copy rows 2 onwards" },
-              { n: "4", t: "Paste into Sheet", d: "Paste into your Outreach sheet starting at A2" },
-              { n: "5", t: "Run the Script", d: "Extensions → Apps Script → select sendEmail1 → Run" },
-            ].map((s) => (
-              <div key={s.n} style={{ display: "flex", gap: 14, marginBottom: 14, alignItems: "flex-start" }}>
-                <div style={{
-                  width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                  background: "linear-gradient(135deg, #059669, #0d9488)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 11, fontWeight: 700,
-                }}>{s.n}</div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{s.t}</div>
-                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{s.d}</div>
-                </div>
-              </div>
-            ))}
-            <button onClick={() => setShowExport(false)} style={{
-              marginTop: 8, width: "100%", padding: "11px", borderRadius: 8, border: "none",
-              background: "linear-gradient(135deg, #059669, #0d9488)", color: "#fff",
-              fontSize: 13, fontWeight: 700, cursor: "pointer",
-            }}>Got it!</button>
-          </div>
-        </div>
-      )}
-
       {/* Toast */}
       {toast && (
         <div style={{
@@ -592,4 +592,14 @@ export default function EmailAgent() {
       `}</style>
     </div>
   );
+}
+
+export default function App() {
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  if (!loggedIn) {
+    return <LoginScreen onLogin={() => setLoggedIn(true)} />;
+  }
+
+  return <EmailAgent onLogout={() => setLoggedIn(false)} />;
 }
