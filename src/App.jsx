@@ -421,77 +421,68 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
     const orgs = companies.filter((c) => selectedOrgs.has(c.id));
     const allPeople = [];
 
-    // Build title matchers from seniority selections for client-side filtering
-    const seniorityPatterns = {
-      owner: /owner/i,
-      founder: /founder|co-founder/i,
-      c_suite: /^(ceo|cto|cfo|cmo|coo|cpo|cio|chief)/i,
-      partner: /partner/i,
-      vp: /vice president|\bvp\b/i,
-      head: /^head\b|head of/i,
-      director: /director/i,
-      manager: /manager/i,
-      senior: /senior|\bsr\./i,
-      entry: /junior|intern|entry|associate/i,
-    };
+    const orgIds = orgs.map((o) => o.id).filter(Boolean);
+    const orgNameMap = {};
+    orgs.forEach((o) => { orgNameMap[o.id] = o.name; });
 
-    const customTitleList = customTitles.trim() ? customTitles.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean) : [];
+    const searchParams = { page: 1, per_page: 25 };
+    if (orgIds.length > 0) searchParams.organization_ids = orgIds;
+    if (selectedSeniorities.size > 0) searchParams.person_seniorities = Array.from(selectedSeniorities);
+    if (customTitles.trim()) searchParams.person_titles = customTitles.split(",").map((s) => s.trim()).filter(Boolean);
 
-    console.log("[OutreachAI] Using FREE endpoint: organization_top_people");
-    console.log("[OutreachAI] Seniorities selected:", Array.from(selectedSeniorities));
-    console.log("[OutreachAI] Custom titles:", customTitleList);
+    console.log("[OutreachAI] People search params:", JSON.stringify(searchParams));
 
-    for (const org of orgs) {
+    let rawPeople = [];
+    try {
+      console.log("[OutreachAI] Trying mixed_people/api_search...");
+      const data = await callApollo("mixed_people/api_search", searchParams);
+      console.log("[OutreachAI] api_search response:", JSON.stringify(data).substring(0, 800));
+      rawPeople = data.people || data.contacts || [];
+    } catch (err1) {
+      console.warn("[OutreachAI] api_search failed:", err1.message, "— trying mixed_people/search...");
       try {
-        console.log(`[OutreachAI] Fetching top people for ${org.name} (ID: ${org.id})...`);
-        const data = await callApollo("mixed_people/organization_top_people", {
-          organization_id: org.id,
-        });
-        console.log(`[OutreachAI] Response for ${org.name}:`, JSON.stringify(data).substring(0, 600));
-
-        const rawPeople = data.people || data.contacts || data.organization_top_people || [];
-
-        rawPeople.forEach((p) => {
-          const title = p.title || "";
-
-          // Check if person matches selected seniorities
-          let matchesSeniority = selectedSeniorities.size === 0;
-          if (!matchesSeniority) {
-            for (const sen of selectedSeniorities) {
-              if (seniorityPatterns[sen] && seniorityPatterns[sen].test(title)) {
-                matchesSeniority = true;
-                break;
-              }
-            }
-          }
-
-          // Check if person matches custom titles
-          let matchesCustom = customTitleList.length === 0;
-          if (!matchesCustom) {
-            matchesCustom = customTitleList.some((ct) => title.toLowerCase().includes(ct));
-          }
-
-          // Include if matches either seniority OR custom title
-          if (matchesSeniority || matchesCustom) {
-            allPeople.push({
-              id: p.id || `${org.id}-${Math.random()}`,
-              name: p.name || `${p.first_name || ""} ${p.last_name || ""}`.trim(),
-              firstName: p.first_name,
-              title: title || "Unknown Role",
-              company: org.name,
-              companyDomain: org.primary_domain || "",
-              email: p.email || null,
-              orgId: org.id,
-            });
-          }
-        });
-      } catch (err) {
-        console.warn(`[OutreachAI] Failed for ${org.name}:`, err.message);
+        const data2 = await callApollo("mixed_people/search", searchParams);
+        console.log("[OutreachAI] search response:", JSON.stringify(data2).substring(0, 800));
+        rawPeople = data2.people || data2.contacts || [];
+      } catch (err2) {
+        console.error("[OutreachAI] Both endpoints failed:", err2.message);
+        setError(`People search failed: ${err1.message}. Fallback also failed: ${err2.message}`);
+        setLoadingPeople(false);
+        return;
       }
     }
 
+    if (rawPeople.length > 0) {
+      const personIds = rawPeople.map((p) => p.id).filter(Boolean).slice(0, 10);
+      let enrichedMap = {};
+      if (personIds.length > 0) {
+        try {
+          const enrichData = await callApollo("people/bulk_match", { details: personIds.map((id) => ({ id })) });
+          console.log("[OutreachAI] bulk_match response:", JSON.stringify(enrichData).substring(0, 800));
+          if (enrichData.matches) enrichData.matches.forEach((m) => { if (m) enrichedMap[m.id] = m; });
+        } catch (enrichErr) {
+          console.warn("[OutreachAI] bulk_match failed — using partial data:", enrichErr.message);
+        }
+      }
+
+      rawPeople.forEach((p) => {
+        const enriched = enrichedMap[p.id] || {};
+        const orgName = p.organization?.name || enriched.organization?.name || orgNameMap[p.organization_id] || "Unknown";
+        allPeople.push({
+          id: p.id,
+          name: p.name || enriched.name || `${p.first_name || ""} ${p.last_name || ""}`.trim(),
+          firstName: p.first_name || enriched.first_name,
+          title: p.title || enriched.title || "Unknown Role",
+          company: orgName,
+          companyDomain: p.organization?.primary_domain || enriched.organization?.primary_domain || "",
+          email: enriched.email || p.email || null,
+          orgId: p.organization_id,
+        });
+      });
+    }
+
     if (allPeople.length === 0) {
-      setError("No people found matching your filters. Try selecting different seniority levels, broader titles, or more companies.");
+      setError("No people found. Try selecting different seniority levels or more companies. Check Console (F12) for API details.");
       setLoadingPeople(false);
       return;
     }
