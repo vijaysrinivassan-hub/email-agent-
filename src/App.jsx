@@ -107,7 +107,7 @@ function EmailAgent({ onLogout }) {
   const [editSubject, setEditSubject] = useState("");
   const [editFounder, setEditFounder] = useState("");
   const [editEmail, setEditEmail] = useState("");
-  const [toast, setToast] = useState(null);
+  const [aiInstructions, setAiInstructions] = useState("");
   const [showAddContact, setShowAddContact] = useState(false);
   const [newContact, setNewContact] = useState({ firstName: "", lastName: "", company: "", email: "", title: "", whatTheyDo: "" });
 
@@ -133,6 +133,7 @@ function EmailAgent({ onLogout }) {
     try {
       const userPrompt = `Write a personalized internship outreach email to ${emailObj.firstName}, who is ${emailObj.title} at ${emailObj.company}.
 ${emailObj.whatTheyDo ? `About the company: ${emailObj.whatTheyDo}` : ""}
+${aiInstructions ? `\nAdditional instructions from the user:\n${aiInstructions}` : ""}
 
 Candidate resume:
 ${RESUME_CONTEXT}`;
@@ -277,8 +278,41 @@ ${RESUME_CONTEXT}`;
 
             <div style={{ display: "flex", gap: 7 }}>
               {current.status !== "sent" && current.status !== "drafting" && (
-                <button onClick={() => draftWithAI(current)} style={{ padding: "6px 13px", borderRadius: 6, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #7c3aed, #4f46e5)", color: "#fff", fontSize: 11, fontWeight: 700 }}>🤖 Draft with AI</button>
-              )}
+  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+    <input
+      value={aiInstructions}
+      onChange={(e) => setAiInstructions(e.target.value)}
+      placeholder="e.g. Mention I love their recent podcast episode..."
+      style={{
+        background: "#111827",
+        border: "1px solid #334155",
+        borderRadius: 6,
+        padding: "6px 10px",
+        color: "#e2e8f0",
+        fontSize: 11,
+        outline: "none",
+        width: 280,
+      }}
+    />
+    <button
+      onClick={() => draftWithAI(current)}
+      style={{
+        padding: "6px 13px",
+        borderRadius: 6,
+        border: "none",
+        cursor: "pointer",
+        background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
+        color: "#fff",
+        fontSize: 11,
+        fontWeight: 700,
+        whiteSpace: "nowrap",
+      }}
+    >
+      🤖 Draft with AI
+    </button>
+  </div>
+)}
+
               {current.status === "drafting" && (
                 <div style={{ padding: "6px 13px", borderRadius: 6, background: "#2d1b4e", color: "#c084fc", fontSize: 11 }}>⏳ AI Writing...</div>
               )}
