@@ -417,12 +417,17 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
     setError(null);
     try {
       const body = { page: 1, per_page: 25 };
-      if (userProfile?.locations?.length) body.organization_locations = userProfile.locations;
-      if (userProfile?.industries?.length) body.organization_industries = userProfile.industries;
-      if (userProfile?.companySize?.length) body.organization_num_employees_ranges = userProfile.companySize;
-      if (userProfile?.keywords) {
-        body.q_organization_keyword_tags = userProfile.keywords.split(",").map(s => s.trim()).filter(Boolean);
-      }
+     if (userProfile?.locations?.length) body.organization_locations = userProfile.locations;
+if (userProfile?.companySize?.length) body.organization_num_employees_ranges = userProfile.companySize;
+
+const keywordTags = [];
+if (userProfile?.industries?.length) {
+  userProfile.industries.forEach(ind => keywordTags.push(ind.toLowerCase()));
+}
+if (userProfile?.keywords) {
+  userProfile.keywords.split(",").map(s => s.trim()).filter(Boolean).forEach(k => keywordTags.push(k));
+}
+if (keywordTags.length) body.q_organization_keyword_tags = keywordTags;
       const data = await callApollo("organizations/search", body);
       if (data.organizations && data.organizations.length > 0) {
         setCompanies(data.organizations);
