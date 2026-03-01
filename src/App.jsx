@@ -418,87 +418,85 @@ function CompanySelect({ onContinue, onBack, userProfile }) {
   const fetchPeople = async () => {
     setLoadingPeople(true);
     setError(null);
-    const orgs = companies.filter(c => selectedOrgs.has(c.id));
+    const orgs = companies.filter((c) => selectedOrgs.has(c.id));
     const allPeople = [];
 
-    const domains = orgs.map(o => o.primary_domain).filter(Boolean);
-    const orgNameMap = {};
-    orgs.forEach(o => { if (o.primary_domain) orgNameMap[o.primary_domain] = o.name; });
+    // Build title matchers from seniority selections for client-side filtering
+    const seniorityPatterns = {
+      owner: /owner/i,
+      founder: /founder|co-founder/i,
+      c_suite: /^(ceo|cto|cfo|cmo|coo|cpo|cio|chief)/i,
+      partner: /partner/i,
+      vp: /vice president|\bvp\b/i,
+      head: /^head\b|head of/i,
+      director: /director/i,
+      manager: /manager/i,
+      senior: /senior|\bsr\./i,
+      entry: /junior|intern|entry|associate/i,
+    };
 
-    // Build search params for api_search (query params style)
-    const searchParams = { page: 1, per_page: 25 };
-    if (domains.length > 0) {
-      searchParams.q_organization_domains = domains;
-    }
-    if (selectedSeniorities.size > 0) {
-      searchParams.person_seniorities = Array.from(selectedSeniorities);
-    }
-    if (customTitles.trim()) {
-      searchParams.person_titles = customTitles.split(",").map(s => s.trim()).filter(Boolean);
-    }
+    const customTitleList = customTitles.trim() ? customTitles.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean) : [];
 
-    console.log("[OutreachAI] People search params:", JSON.stringify(searchParams));
+    console.log("[OutreachAI] Using FREE endpoint: organization_top_people");
+    console.log("[OutreachAI] Seniorities selected:", Array.from(selectedSeniorities));
+    console.log("[OutreachAI] Custom titles:", customTitleList);
 
-    try {
-      // Step 1: Use api_search to find people (correct endpoint)
-      for (const org of orgs) {
-  const data = await callApollo("mixed_people/organization_top_people", {
-    organization_id: org.id,
-  });
-  // parse data.people from each response...
-}
-      console.log("[OutreachAI] api_search response:", JSON.stringify(data).substring(0, 800));
-
-      const rawPeople = data.people || data.contacts || [];
-
-      if (rawPeople.length > 0) {
-        // Step 2: Try to enrich with bulk_match for emails
-        const personIds = rawPeople.map(p => p.id).filter(Boolean).slice(0, 10);
-        let enrichedMap = {};
-
-        if (personIds.length > 0) {
-          try {
-            const enrichData = await callApollo("people/bulk_match", {
-              details: personIds.map(id => ({ id })),
-            });
-            console.log("[OutreachAI] bulk_match response:", JSON.stringify(enrichData).substring(0, 800));
-            if (enrichData.matches) {
-              enrichData.matches.forEach(m => { if (m) enrichedMap[m.id] = m; });
-            }
-          } catch (enrichErr) {
-            console.warn("[OutreachAI] bulk_match failed (using partial data):", enrichErr.message);
-          }
-        }
-
-        rawPeople.forEach(p => {
-          const enriched = enrichedMap[p.id] || {};
-          const orgName = p.organization?.name || enriched.organization?.name || orgNameMap[p.organization?.primary_domain] || "Unknown";
-          allPeople.push({
-            id: p.id,
-            name: p.name || enriched.name || ((p.first_name || "") + " " + (p.last_name || "")).trim(),
-            firstName: p.first_name || enriched.first_name,
-            title: p.title || enriched.title || "Unknown Role",
-            company: orgName,
-            companyDomain: p.organization?.primary_domain || enriched.organization?.primary_domain || "",
-            email: enriched.email || p.email || null,
-            orgId: p.organization_id,
-          });
+    for (const org of orgs) {
+      try {
+        console.log(`[OutreachAI] Fetching top people for ${org.name} (ID: ${org.id})...`);
+        const data = await callApollo("mixed_people/organization_top_people", {
+          organization_id: org.id,
         });
+        console.log(`[OutreachAI] Response for ${org.name}:`, JSON.stringify(data).substring(0, 600));
+
+        const rawPeople = data.people || data.contacts || data.organization_top_people || [];
+
+        rawPeople.forEach((p) => {
+          const title = p.title || "";
+
+          // Check if person matches selected seniorities
+          let matchesSeniority = selectedSeniorities.size === 0;
+          if (!matchesSeniority) {
+            for (const sen of selectedSeniorities) {
+              if (seniorityPatterns[sen] && seniorityPatterns[sen].test(title)) {
+                matchesSeniority = true;
+                break;
+              }
+            }
+          }
+
+          // Check if person matches custom titles
+          let matchesCustom = customTitleList.length === 0;
+          if (!matchesCustom) {
+            matchesCustom = customTitleList.some((ct) => title.toLowerCase().includes(ct));
+          }
+
+          // Include if matches either seniority OR custom title
+          if (matchesSeniority || matchesCustom) {
+            allPeople.push({
+              id: p.id || `${org.id}-${Math.random()}`,
+              name: p.name || `${p.first_name || ""} ${p.last_name || ""}`.trim(),
+              firstName: p.first_name,
+              title: title || "Unknown Role",
+              company: org.name,
+              companyDomain: org.primary_domain || "",
+              email: p.email || null,
+              orgId: org.id,
+            });
+          }
+        });
+      } catch (err) {
+        console.warn(`[OutreachAI] Failed for ${org.name}:`, err.message);
       }
-    } catch (err) {
-      console.error("[OutreachAI] api_search failed:", err.message);
-      setError("People search failed: " + err.message + " — Check Console (F12) for details.");
-      setLoadingPeople(false);
-      return;
     }
 
     if (allPeople.length === 0) {
-      setError("No people found for these companies and filters. Try selecting different seniority levels or more companies.");
+      setError("No people found matching your filters. Try selecting different seniority levels, broader titles, or more companies.");
       setLoadingPeople(false);
       return;
     }
     setPeople(allPeople);
-    setSelectedPeople(new Set(allPeople.filter(p => p.email).map(p => p.id)));
+    setSelectedPeople(new Set(allPeople.filter((p) => p.email).map((p) => p.id)));
     setStep("people");
     setLoadingPeople(false);
   };
