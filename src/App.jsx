@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Analytics } from "@vercel/analytics/react";
 
 // ============================================================
 // CHANGE YOUR PASSWORD HERE
@@ -365,8 +364,6 @@ ${RESUME_CONTEXT}`;
           {toast.msg}
         </div>
       )}
-
-      <Analytics />
 
       <style>{`
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
